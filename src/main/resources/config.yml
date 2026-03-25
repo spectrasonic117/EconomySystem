@@ -1,0 +1,25 @@
+# Plugin configuration
+economy:
+  # The currency symbol
+  currency-symbol: "$"
+  # The currency name
+  currency-name: "Dollar"
+  # Amount of money the player starts with
+  start-balance: 100.0
+  # Formato de visualización del dinero
+  # DECIMAL_PLACES: 0 = solo enteros (1,500), 2 = dos decimales (1,500.00)
+  decimal-places: 0
+
+# Database configuration
+# The database is used to store the player's balance.
+# TYPE: mariadb, litesql
+database:
+  type: litesql
+  mariadb:
+    host: "localhost"
+    port: 3306
+    database: "economy"
+    username: "user"
+    password: ""
+  litesql:
+    file: "economy.db"
