@@ -1,122 +1,160 @@
 package com.spectrasonic.economySystem.commands;
 
 import com.spectrasonic.economySystem.Main;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.CommandPermission;
+import dev.jorel.commandapi.arguments.EntitySelectorArgument;
+import dev.jorel.commandapi.arguments.IntegerArgument;
+import dev.jorel.commandapi.executors.CommandArguments;
 import org.bukkit.command.CommandSender;
-import org.jetbrains.annotations.NotNull;
+import org.bukkit.entity.Player;
 
-public class EconomyAdminCommand implements CommandExecutor {
+public class EconomyadminCommand {
 
     private final Main plugin;
 
-    public EconomyAdminCommand(Main plugin) {
+    public EconomyadminCommand(Main plugin) {
         this.plugin = plugin;
     }
 
-    @Override
-    public boolean onCommand(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s,
-            @NotNull String[] args) {
+    public void register() {
+        new CommandAPICommand("economyadmin")
+            .withAliases("ecoa")
+            .withPermission(CommandPermission.OP)
+            .executes((CommandSender sender, CommandArguments args) -> {
+                sender.sendMessage(plugin.getMessages().get("usage", "%usage%", "/economyadmin <set|add|remove|reset|balance|reload> <player> [amount]"));
+            })
+            .withSubcommand(new CommandAPICommand("reload")
+                .executes((CommandSender sender, CommandArguments args) -> {
+                    plugin.reloadConfig();
+                    plugin.getConfigManager().loadMessages();
+                    sender.sendMessage("Plugin configuration and messages reloaded.");
+                })
+            )
+            .withSubcommand(new CommandAPICommand("balance")
+                .withArguments(new EntitySelectorArgument.OnePlayer("player"))
+                .executes((CommandSender sender, CommandArguments args) -> {
+                    Object playerObj = args.get("player");
+                    if (playerObj == null) {
+                        sender.sendMessage(plugin.getMessages().get("player-not-found"));
+                        return;
+                    }
+                    Player player = (Player) playerObj;
+                    String playerUuid = player.getUniqueId().toString();
+                    if (!plugin.getDatabaseManager().accountExists(playerUuid)) {
+                        plugin.getDatabaseManager().createAccount(playerUuid);
+                    }
+                    double balance = plugin.getDatabaseManager().getBalance(playerUuid);
+                    sender.sendMessage(plugin.getMessages().get("balance-message-other", "%player%", player.getName(), "%balance%", String.valueOf(balance)));
+                })
+            )
+            .withSubcommand(new CommandAPICommand("set")
+                .withArguments(new EntitySelectorArgument.OnePlayer("player"))
+                .withArguments(new IntegerArgument("amount"))
+                .executes((CommandSender sender, CommandArguments args) -> {
+                    Object playerObj = args.get("player");
+                    if (playerObj == null) {
+                        sender.sendMessage(plugin.getMessages().get("player-not-found"));
+                        return;
+                    }
+                    Player player = (Player) playerObj;
+                    Object amountObj = args.get("amount");
+                    if (amountObj == null) {
+                        sender.sendMessage(plugin.getMessages().get("usage", "%usage%", "/economyadmin set <player> <amount>"));
+                        return;
+                    }
+                    int amount = (int) amountObj;
 
-        // No arguments – show usage
-        if (args.length == 0) {
-            commandSender.sendMessage(plugin.getMessages().get("usage", "%usage%",
-                    "/economyadmin <set|add|remove|reset|balance|reload> <player> [amount]"));
-            return true;
-        }
-        // Reload subcommand (no player needed)
-        if (args[0].equalsIgnoreCase("reload")) {
-            // Reload config.yml
-            plugin.reloadConfig();
-            // Reload messages.yml via ConfigManager
-            plugin.getConfigManager().loadMessages();
-            commandSender.sendMessage("Plugin configuration and messages reloaded.");
-            return true;
-        }
-        // Permission check – only admins may use admin commands
-        if (commandSender instanceof org.bukkit.entity.Player && !commandSender.hasPermission("economyadmin.use")) {
-            commandSender.sendMessage(plugin.getMessages().get("no-permission"));
-            return true;
-        }
-        // Require at least player argument for other subcommands
-        if (args.length < 2) {
-            commandSender.sendMessage(plugin.getMessages().get("usage", "%usage%",
-                    "/economyadmin <set|add|remove|reset|balance|reload> <player> [amount]"));
-            return true;
-        }
+                    if (amount < 0) {
+                        sender.sendMessage(plugin.getMessages().get("usage", "%usage%", "/economyadmin set <player> <amount>"));
+                        return;
+                    }
 
-        // Check if Player exists in OfflinePlayer list
-        OfflinePlayer player = plugin.getServer().getOfflinePlayer(args[1]);
-        if (!player.hasPlayedBefore() && !player.isOnline()) {
-            commandSender.sendMessage(plugin.getMessages().get("player-not-found"));
-            return true;
-        }
+                    String playerUuid = player.getUniqueId().toString();
+                    if (!plugin.getDatabaseManager().accountExists(playerUuid)) {
+                        plugin.getDatabaseManager().createAccount(playerUuid);
+                    }
+                    plugin.getDatabaseManager().setBalance(playerUuid, amount);
+                    sender.sendMessage(plugin.getMessages().get("balance-set-success", "%player%", player.getName(), "%amount%", String.valueOf(amount)));
+                })
+            )
+            .withSubcommand(new CommandAPICommand("add")
+                .withArguments(new EntitySelectorArgument.OnePlayer("player"))
+                .withArguments(new IntegerArgument("amount"))
+                .executes((CommandSender sender, CommandArguments args) -> {
+                    Object playerObj = args.get("player");
+                    if (playerObj == null) {
+                        sender.sendMessage(plugin.getMessages().get("player-not-found"));
+                        return;
+                    }
+                    Player player = (Player) playerObj;
+                    Object amountObj = args.get("amount");
+                    if (amountObj == null) {
+                        sender.sendMessage(plugin.getMessages().get("usage", "%usage%", "/economyadmin add <player> <amount>"));
+                        return;
+                    }
+                    int amount = (int) amountObj;
 
-        if (args[0].equalsIgnoreCase("balance")) {
-            String playerUuid = player.getUniqueId().toString();
-            if (!plugin.getDatabaseManager().accountExists(playerUuid)) {
-                plugin.getDatabaseManager().createAccount(playerUuid);
-            }
-            double balance = plugin.getDatabaseManager().getBalance(playerUuid);
-            commandSender.sendMessage(plugin.getMessages().get("balance-message-other", "%player%", player.getName(),
-                    "%balance%", String.valueOf(balance)));
-            return true;
-        }
+                    if (amount <= 0) {
+                        sender.sendMessage(plugin.getMessages().get("usage", "%usage%", "/economyadmin add <player> <amount>"));
+                        return;
+                    }
 
-        if (args.length < 3) {
-            commandSender.sendMessage(
-                    plugin.getMessages().get("usage", "%usage%", "/economyadmin <set|add|remove|reset> <player> <amount>"));
-            return true;
-        }
+                    String playerUuid = player.getUniqueId().toString();
+                    if (!plugin.getDatabaseManager().accountExists(playerUuid)) {
+                        plugin.getDatabaseManager().createAccount(playerUuid);
+                    }
+                    plugin.getDatabaseManager().addBalance(playerUuid, amount);
+                    sender.sendMessage(plugin.getMessages().get("balance-add-success", "%player%", player.getName(), "%amount%", String.valueOf(amount)));
+                })
+            )
+            .withSubcommand(new CommandAPICommand("remove")
+                .withArguments(new EntitySelectorArgument.OnePlayer("player"))
+                .withArguments(new IntegerArgument("amount"))
+                .executes((CommandSender sender, CommandArguments args) -> {
+                    Object playerObj = args.get("player");
+                    if (playerObj == null) {
+                        sender.sendMessage(plugin.getMessages().get("player-not-found"));
+                        return;
+                    }
+                    Player player = (Player) playerObj;
+                    Object amountObj = args.get("amount");
+                    if (amountObj == null) {
+                        sender.sendMessage(plugin.getMessages().get("usage", "%usage%", "/economyadmin remove <player> <amount>"));
+                        return;
+                    }
+                    int amount = (int) amountObj;
 
-        double amount;
-        try {
-            amount = Double.parseDouble(args[2]);
-        } catch (NumberFormatException e) {
-            commandSender.sendMessage(
-                    plugin.getMessages().get("usage", "%usage%", "/economyadmin <set|add|remove|reset> <player> <amount>"));
-            return true;
-        }
+                    if (amount <= 0) {
+                        sender.sendMessage(plugin.getMessages().get("usage", "%usage%", "/economyadmin remove <player> <amount>"));
+                        return;
+                    }
 
-        if (amount <= 0) {
-            commandSender.sendMessage(
-                    plugin.getMessages().get("usage", "%usage%", "/economyadmin <set|add|remove|reset> <player> <amount>"));
-            return true;
-        }
-
-        String playerUuid = player.getUniqueId().toString();
-        if (!plugin.getDatabaseManager().accountExists(playerUuid)) {
-            plugin.getDatabaseManager().createAccount(playerUuid);
-        }
-
-        switch (args[0]) {
-            case "set":
-                plugin.getDatabaseManager().setBalance(playerUuid, amount);
-                commandSender.sendMessage(plugin.getMessages().get("balance-set-success", "%player%", player.getName(),
-                        "%amount%", String.valueOf(amount)));
-                break;
-            case "add":
-                plugin.getDatabaseManager().addBalance(playerUuid, amount);
-                commandSender.sendMessage(plugin.getMessages().get("balance-add-success", "%player%", player.getName(),
-                        "%amount%", String.valueOf(amount)));
-                break;
-            case "remove":
-                plugin.getDatabaseManager().removeBalance(playerUuid, amount);
-                commandSender.sendMessage(plugin.getMessages().get("remove-balance-success", "%player%",
-                        player.getName(), "%amount%", String.valueOf(amount)));
-                break;
-            case "reset":
-                plugin.getDatabaseManager().setBalance(playerUuid, 0);
-                commandSender.sendMessage(plugin.getMessages().get("balance-set-success", "%player%", player.getName(),
-                        "%amount%", "0"));
-                break;
-            default:
-                commandSender.sendMessage(plugin.getMessages().get("usage", "%usage%",
-                        "/economyadmin <set|add|remove|reset> <player> <amount>"));
-                break;
-        }
-
-        return true;
+                    String playerUuid = player.getUniqueId().toString();
+                    if (!plugin.getDatabaseManager().accountExists(playerUuid)) {
+                        plugin.getDatabaseManager().createAccount(playerUuid);
+                    }
+                    plugin.getDatabaseManager().removeBalance(playerUuid, amount);
+                    sender.sendMessage(plugin.getMessages().get("remove-balance-success", "%player%", player.getName(), "%amount%", String.valueOf(amount)));
+                })
+            )
+            .withSubcommand(new CommandAPICommand("reset")
+                .withArguments(new EntitySelectorArgument.OnePlayer("player"))
+                .executes((CommandSender sender, CommandArguments args) -> {
+                    Object playerObj = args.get("player");
+                    if (playerObj == null) {
+                        sender.sendMessage(plugin.getMessages().get("player-not-found"));
+                        return;
+                    }
+                    Player player = (Player) playerObj;
+                    String playerUuid = player.getUniqueId().toString();
+                    if (!plugin.getDatabaseManager().accountExists(playerUuid)) {
+                        plugin.getDatabaseManager().createAccount(playerUuid);
+                    }
+                    plugin.getDatabaseManager().setBalance(playerUuid, 0);
+                    sender.sendMessage(plugin.getMessages().get("balance-set-success", "%player%", player.getName(), "%amount%", "0"));
+                })
+            )
+            .register();
     }
 }

@@ -1,15 +1,13 @@
 package com.spectrasonic.economySystem.commands;
 
 import com.spectrasonic.economySystem.Main;
-import com.spectrasonic.economySystem.database.DatabaseManager;
-import org.bukkit.Bukkit;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.arguments.EntitySelectorArgument;
+import dev.jorel.commandapi.arguments.IntegerArgument;
+import dev.jorel.commandapi.executors.CommandArguments;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
 
-public class PayCommand implements CommandExecutor {
+public class PayCommand {
 
     private final Main plugin;
 
@@ -17,74 +15,65 @@ public class PayCommand implements CommandExecutor {
         this.plugin = plugin;
     }
 
-    @Override
-    public boolean onCommand(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s,
-            @NotNull String[] strings) {
+    public void register() {
+        new CommandAPICommand("pay")
+            .executesPlayer((Player player, CommandArguments args) -> {
+                player.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
+            })
+            .withArguments(new EntitySelectorArgument.OnePlayer("player"))
+            .executesPlayer((Player player, CommandArguments args) -> {
+                player.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
+            })
+            .withArguments(new IntegerArgument("amount"))
+            .executesPlayer((Player player, CommandArguments args) -> {
+                Object targetObj = args.get("player");
+                if (targetObj == null) {
+                    player.sendMessage(plugin.getMessages().get("player-not-found"));
+                    return;
+                }
+                Player target = (Player) targetObj;
 
-        if (strings.length < 2) {
-            commandSender.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
-            return true;
-        }
+                Object amountObj = args.get("amount");
+                if (amountObj == null) {
+                    player.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
+                    return;
+                }
+                int amount = (int) amountObj;
 
-        if (!(commandSender instanceof Player player)) {
-            commandSender.sendMessage(plugin.getMessages().get("player-not-player"));
-            return true;
-        }
+                if (amount <= 0) {
+                    player.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
+                    return;
+                }
 
-        double amount;
-        try {
-            amount = Double.parseDouble(strings[1]);
-        } catch (NumberFormatException e) {
-            commandSender.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
-            return true;
-        }
+                if (target.equals(player)) {
+                    player.sendMessage(plugin.getMessages().get("pay-self"));
+                    return;
+                }
 
-        if (amount <= 0) {
-            commandSender.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
-            return true;
-        }
+                String playerUuid = player.getUniqueId().toString();
+                String targetUuid = target.getUniqueId().toString();
 
-        Player target = Bukkit.getPlayer(strings[0]);
-        if (target == null) {
-            commandSender.sendMessage(plugin.getMessages().get("player-not-found"));
-            return true;
-        }
+                if (!plugin.getDatabaseManager().accountExists(playerUuid)) {
+                    plugin.getDatabaseManager().createAccount(playerUuid);
+                }
+                if (!plugin.getDatabaseManager().accountExists(targetUuid)) {
+                    plugin.getDatabaseManager().createAccount(targetUuid);
+                }
 
-        if (target.equals(player)) {
-            commandSender.sendMessage(plugin.getMessages().get("pay-self"));
-            return true;
-        }
+                double playerBalance = plugin.getDatabaseManager().getBalance(playerUuid);
 
-        DatabaseManager databaseManager = plugin.getDatabaseManager();
-        String playerUuid = player.getUniqueId().toString();
-        String targetUuid = target.getUniqueId().toString();
+                if (playerBalance < amount) {
+                    player.sendMessage(plugin.getMessages().get("not-enough-money"));
+                    return;
+                }
 
-        // Ensure accounts exist
-        if (!databaseManager.accountExists(playerUuid)) {
-            databaseManager.createAccount(playerUuid);
-        }
-        if (!databaseManager.accountExists(targetUuid)) {
-            databaseManager.createAccount(targetUuid);
-        }
+                plugin.getDatabaseManager().removeBalance(playerUuid, amount);
+                plugin.getDatabaseManager().addBalance(targetUuid, amount);
+                plugin.getDatabaseManager().createTransaction(playerUuid, targetUuid, amount);
 
-        double playerBalance = databaseManager.getBalance(playerUuid);
-
-        if (playerBalance < amount) {
-            commandSender.sendMessage(plugin.getMessages().get("not-enough-money"));
-            return true;
-        }
-
-        databaseManager.removeBalance(playerUuid, amount);
-        databaseManager.addBalance(targetUuid, amount);
-
-        // Create Transaction
-        databaseManager.createTransaction(playerUuid, targetUuid, amount);
-
-        player.sendMessage(plugin.getMessages().get("pay-success-sender", "%player%", target.getName(), "%amount%",
-                String.valueOf(amount)));
-        target.sendMessage(plugin.getMessages().get("pay-success-receiver", "%player%", player.getName(), "%amount%",
-                String.valueOf(amount)));
-
-        return true;
+                player.sendMessage(plugin.getMessages().get("pay-success-sender", "%player%", target.getName(), "%amount%", String.valueOf(amount)));
+                target.sendMessage(plugin.getMessages().get("pay-success-receiver", "%player%", player.getName(), "%amount%", String.valueOf(amount)));
+            })
+            .register();
     }
 }
