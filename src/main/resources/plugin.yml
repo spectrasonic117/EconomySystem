@@ -4,9 +4,8 @@ version: "${version}"
 main: com.spectrasonic.economySystem.Main
 api-version: "1.21"
 authors: [Spectrasonic]
-softdepend:
-  - Vault
-  - PlaceholderAPI
+depend: [CommandAPI]
+softdepend: [Vault, PlaceholderAPI]
 
 commands:
   balance:

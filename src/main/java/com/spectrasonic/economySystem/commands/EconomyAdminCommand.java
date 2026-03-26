@@ -22,7 +22,7 @@ public class EconomyAdminCommand implements CommandExecutor {
         // No arguments – show usage
         if (args.length == 0) {
             commandSender.sendMessage(plugin.getMessages().get("usage", "%usage%",
-                    "/economyadmin <set|add|remove|balance|reload> <player> [amount]"));
+                    "/economyadmin <set|add|remove|reset|balance|reload> <player> [amount]"));
             return true;
         }
         // Reload subcommand (no player needed)
@@ -34,10 +34,15 @@ public class EconomyAdminCommand implements CommandExecutor {
             commandSender.sendMessage("Plugin configuration and messages reloaded.");
             return true;
         }
+        // Permission check – only admins may use admin commands
+        if (commandSender instanceof org.bukkit.entity.Player && !commandSender.hasPermission("economyadmin.use")) {
+            commandSender.sendMessage(plugin.getMessages().get("no-permission"));
+            return true;
+        }
         // Require at least player argument for other subcommands
         if (args.length < 2) {
             commandSender.sendMessage(plugin.getMessages().get("usage", "%usage%",
-                    "/economyadmin <set|add|remove|balance|reload> <player> [amount]"));
+                    "/economyadmin <set|add|remove|reset|balance|reload> <player> [amount]"));
             return true;
         }
 
@@ -61,7 +66,7 @@ public class EconomyAdminCommand implements CommandExecutor {
 
         if (args.length < 3) {
             commandSender.sendMessage(
-                    plugin.getMessages().get("usage", "%usage%", "/economyadmin <set|add|remove> <player> <amount>"));
+                    plugin.getMessages().get("usage", "%usage%", "/economyadmin <set|add|remove|reset> <player> <amount>"));
             return true;
         }
 
@@ -70,13 +75,13 @@ public class EconomyAdminCommand implements CommandExecutor {
             amount = Double.parseDouble(args[2]);
         } catch (NumberFormatException e) {
             commandSender.sendMessage(
-                    plugin.getMessages().get("usage", "%usage%", "/economyadmin <set|add|remove> <player> <amount>"));
+                    plugin.getMessages().get("usage", "%usage%", "/economyadmin <set|add|remove|reset> <player> <amount>"));
             return true;
         }
 
         if (amount <= 0) {
             commandSender.sendMessage(
-                    plugin.getMessages().get("usage", "%usage%", "/economyadmin <set|add|remove> <player> <amount>"));
+                    plugin.getMessages().get("usage", "%usage%", "/economyadmin <set|add|remove|reset> <player> <amount>"));
             return true;
         }
 
@@ -101,9 +106,14 @@ public class EconomyAdminCommand implements CommandExecutor {
                 commandSender.sendMessage(plugin.getMessages().get("remove-balance-success", "%player%",
                         player.getName(), "%amount%", String.valueOf(amount)));
                 break;
+            case "reset":
+                plugin.getDatabaseManager().setBalance(playerUuid, 0);
+                commandSender.sendMessage(plugin.getMessages().get("balance-set-success", "%player%", player.getName(),
+                        "%amount%", "0"));
+                break;
             default:
                 commandSender.sendMessage(plugin.getMessages().get("usage", "%usage%",
-                        "/economyadmin <set|add|remove> <player> <amount>"));
+                        "/economyadmin <set|add|remove|reset> <player> <amount>"));
                 break;
         }
 

@@ -7,6 +7,9 @@ import com.spectrasonic.economySystem.database.DatabaseManager;
 import com.spectrasonic.economySystem.utils.MessageManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
+
 public final class Main extends JavaPlugin {
 
     private CommandManager commandManager;
@@ -15,13 +18,14 @@ public final class Main extends JavaPlugin {
 
     @Override
     public void onLoad() {
-        saveDefaultConfig();
+        CommandAPI.onLoad(new CommandAPIPaperConfig(this).verboseOutput(false));
     }
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
+        CommandAPI.onEnable();
         configManager = new ConfigManager(this);
         configManager.loadMessages();
         configManager.setupPermissions();
@@ -40,6 +44,7 @@ public final class Main extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        CommandAPI.onDisable();
         if (loadManager != null) {
             loadManager.shutdown();
         }

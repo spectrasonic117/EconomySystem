@@ -3,7 +3,7 @@ plugins {
     id 'com.gradleup.shadow' version '9.3.2'
 }
 
-group = 'com.spectrasonic'
+group = "${pluginGroup}"
 version = "${pluginVersion}"
 
 repositories {
@@ -36,12 +36,18 @@ dependencies {
     // MariaDB JDBC Driver
     implementation "com.zaxxer:HikariCP:${hikariVersion}"
     implementation "org.mariadb.jdbc:mariadb-java-client:${mariadbVersion}"
+
+    // CommandAPI
+    compileOnly "dev.jorel:commandapi-paper-core:${commandApiVersion}"
+    implementation "dev.jorel:commandapi-paper-shade:${commandApiVersion}"
+
 }
 
 
 shadowJar {
     relocate 'com.zaxxer.hikari', 'de.imdacro.libs.hikari'
     relocate 'org.mariadb.jdbc', 'de.imdacro.libs.mariadb'
+    relocate("dev.jorel.commandapi", "my.custom.package.commandapi")
     destinationDirectory = file("${rootDir}/out")
     archiveFileName = "${rootProject.name}-${version}.jar"
 }
