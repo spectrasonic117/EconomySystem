@@ -18,7 +18,7 @@ public final class Main extends JavaPlugin {
 
     @Override
     public void onLoad() {
-        CommandAPI.onLoad(new CommandAPIPaperConfig(this).verboseOutput(false));
+        CommandAPI.onLoad(new CommandAPIPaperConfig(this));
     }
 
     @Override
