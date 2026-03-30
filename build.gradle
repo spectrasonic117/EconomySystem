@@ -39,7 +39,7 @@ dependencies {
 
     // CommandAPI
     compileOnly "dev.jorel:commandapi-paper-core:${commandApiVersion}"
-    implementation "dev.jorel:commandapi-paper-shade:${commandApiVersion}"
+    // implementation "dev.jorel:commandapi-paper-shade:${commandApiVersion}"
 
 }
 
@@ -47,7 +47,7 @@ dependencies {
 shadowJar {
     relocate 'com.zaxxer.hikari', 'com.spectrasonic.hikari'
     relocate 'org.mariadb.jdbc', 'com.spectrasonic.mariadb'
-    relocate("dev.jorel.commandapi", "com.spectrasonic.commandapi")
+    // relocate("dev.jorel.commandapi", "com.spectrasonic.commandapi")
     destinationDirectory = file("${rootDir}/out")
     archiveFileName = "${rootProject.name}-${version}.jar"
 }
