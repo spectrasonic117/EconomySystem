@@ -18,35 +18,43 @@ public class BalanceCommand {
     public void register() {
         new CommandAPICommand("balance")
             .withAliases("bal", "money", "pfund", "coins", "geld")
-            .executesPlayer((Player player, CommandArguments args) -> {
-                String uuid = player.getUniqueId().toString();
-                if (!plugin.getDatabaseManager().accountExists(uuid)) {
-                    plugin.getDatabaseManager().createAccount(uuid);
-                }
-                double balance = plugin.getDatabaseManager().getBalance(uuid);
-                player.sendMessage(plugin.getMessages().get("balance-message-own", "%balance%", String.valueOf(balance)));
-            })
+            .executesPlayer(this::handleBalanceSelf)
             .withArguments(new EntitySelectorArgument.OnePlayer("player"))
             .withPermission("economysystem.command.balance.other")
-            .executes((CommandSender sender, CommandArguments args) -> {
-                if (!(sender instanceof Player)) {
-                    sender.sendMessage(plugin.getMessages().get("player-not-player"));
-                    return;
-                }
-                Player player = (Player) sender;
-                Object targetObj = args.get("player");
-                if (targetObj == null) {
-                    player.sendMessage(plugin.getMessages().get("player-not-found"));
-                    return;
-                }
-                Player target = (Player) targetObj;
-                String targetUuid = target.getUniqueId().toString();
-                if (!plugin.getDatabaseManager().accountExists(targetUuid)) {
-                    plugin.getDatabaseManager().createAccount(targetUuid);
-                }
-                double balance = plugin.getDatabaseManager().getBalance(targetUuid);
-                player.sendMessage(plugin.getMessages().get("balance-message-other", "%player%", target.getName(), "%balance%", String.valueOf(balance)));
-            })
+            .executes(this::handleBalanceOther)
             .register();
+    }
+
+    private void handleBalanceSelf(Player player, CommandArguments args) {
+        String uuid = player.getUniqueId().toString();
+        checkAccount(uuid);
+        double balance = plugin.getDatabaseManager().getBalance(uuid);
+        player.sendMessage(plugin.getMessages().get("balance-message-own", "%balance%", String.valueOf(balance)));
+    }
+
+    private void handleBalanceOther(CommandSender sender, CommandArguments args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(plugin.getMessages().get("player-not-player"));
+            return;
+        }
+
+        Player player = (Player) sender;
+        Player target = (Player) args.get("player");
+        
+        if (target == null) {
+            player.sendMessage(plugin.getMessages().get("player-not-found"));
+            return;
+        }
+
+        String targetUuid = target.getUniqueId().toString();
+        checkAccount(targetUuid);
+        double balance = plugin.getDatabaseManager().getBalance(targetUuid);
+        player.sendMessage(plugin.getMessages().get("balance-message-other", "%player%", target.getName(), "%balance%", String.valueOf(balance)));
+    }
+
+    private void checkAccount(String uuid) {
+        if (!plugin.getDatabaseManager().accountExists(uuid)) {
+            plugin.getDatabaseManager().createAccount(uuid);
+        }
     }
 }

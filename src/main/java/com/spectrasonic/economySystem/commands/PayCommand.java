@@ -17,63 +17,61 @@ public class PayCommand {
 
     public void register() {
         new CommandAPICommand("pay")
-            .executesPlayer((Player player, CommandArguments args) -> {
-                player.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
-            })
+            .executesPlayer(this::handlePayUsage)
             .withArguments(new EntitySelectorArgument.OnePlayer("player"))
-            .executesPlayer((Player player, CommandArguments args) -> {
-                player.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
-            })
+            .executesPlayer(this::handlePayUsage)
             .withArguments(new IntegerArgument("amount"))
-            .executesPlayer((Player player, CommandArguments args) -> {
-                Object targetObj = args.get("player");
-                if (targetObj == null) {
-                    player.sendMessage(plugin.getMessages().get("player-not-found"));
-                    return;
-                }
-                Player target = (Player) targetObj;
-
-                Object amountObj = args.get("amount");
-                if (amountObj == null) {
-                    player.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
-                    return;
-                }
-                int amount = (int) amountObj;
-
-                if (amount <= 0) {
-                    player.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
-                    return;
-                }
-
-                if (target.equals(player)) {
-                    player.sendMessage(plugin.getMessages().get("pay-self"));
-                    return;
-                }
-
-                String playerUuid = player.getUniqueId().toString();
-                String targetUuid = target.getUniqueId().toString();
-
-                if (!plugin.getDatabaseManager().accountExists(playerUuid)) {
-                    plugin.getDatabaseManager().createAccount(playerUuid);
-                }
-                if (!plugin.getDatabaseManager().accountExists(targetUuid)) {
-                    plugin.getDatabaseManager().createAccount(targetUuid);
-                }
-
-                double playerBalance = plugin.getDatabaseManager().getBalance(playerUuid);
-
-                if (playerBalance < amount) {
-                    player.sendMessage(plugin.getMessages().get("not-enough-money"));
-                    return;
-                }
-
-                plugin.getDatabaseManager().removeBalance(playerUuid, amount);
-                plugin.getDatabaseManager().addBalance(targetUuid, amount);
-                plugin.getDatabaseManager().createTransaction(playerUuid, targetUuid, amount);
-
-                player.sendMessage(plugin.getMessages().get("pay-success-sender", "%player%", target.getName(), "%amount%", String.valueOf(amount)));
-                target.sendMessage(plugin.getMessages().get("pay-success-receiver", "%player%", player.getName(), "%amount%", String.valueOf(amount)));
-            })
+            .executesPlayer(this::handlePay)
             .register();
+    }
+
+    private void handlePayUsage(Player player, CommandArguments args) {
+        player.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
+    }
+
+    private void handlePay(Player player, CommandArguments args) {
+        Player target = (Player) args.get("player");
+        Integer amount = (Integer) args.get("amount");
+
+        if (target == null) {
+            player.sendMessage(plugin.getMessages().get("player-not-found"));
+            return;
+        }
+
+        if (amount == null || amount <= 0) {
+            handlePayUsage(player, args);
+            return;
+        }
+
+        if (target.equals(player)) {
+            player.sendMessage(plugin.getMessages().get("pay-self"));
+            return;
+        }
+
+        String playerUuid = player.getUniqueId().toString();
+        String targetUuid = target.getUniqueId().toString();
+
+        checkAccount(playerUuid);
+        checkAccount(targetUuid);
+
+        double playerBalance = plugin.getDatabaseManager().getBalance(playerUuid);
+
+        if (playerBalance < amount) {
+            player.sendMessage(plugin.getMessages().get("not-enough-money"));
+            return;
+        }
+
+        plugin.getDatabaseManager().removeBalance(playerUuid, amount);
+        plugin.getDatabaseManager().addBalance(targetUuid, amount);
+        plugin.getDatabaseManager().createTransaction(playerUuid, targetUuid, amount);
+
+        player.sendMessage(plugin.getMessages().get("pay-success-sender", "%player%", target.getName(), "%amount%", String.valueOf(amount)));
+        target.sendMessage(plugin.getMessages().get("pay-success-receiver", "%player%", player.getName(), "%amount%", String.valueOf(amount)));
+    }
+
+    private void checkAccount(String uuid) {
+        if (!plugin.getDatabaseManager().accountExists(uuid)) {
+            plugin.getDatabaseManager().createAccount(uuid);
+        }
     }
 }
