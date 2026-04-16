@@ -4,6 +4,7 @@ import com.spectrasonic.economySystem.Main;
 import com.spectrasonic.economySystem.database.DatabaseManager;
 import com.spectrasonic.economySystem.database.LiteSQLManager;
 import com.spectrasonic.economySystem.database.MariaDBManager;
+import com.spectrasonic.economySystem.database.JDBCManager;
 import com.spectrasonic.economySystem.utils.MessageManager;
 import net.milkbowl.vault.permission.Permission;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -45,6 +46,7 @@ public class ConfigManager {
         switch (dbType.toLowerCase()) {
             case "mariadb" -> databaseManager = new MariaDBManager(plugin);
             case "litesql" -> databaseManager = new LiteSQLManager(plugin);
+            case "url" -> databaseManager = new JDBCManager(plugin);
             default -> {
                 plugin.getLogger().severe("Invalid Database type: " + dbType);
                 plugin.getServer().getPluginManager().disablePlugin(plugin);

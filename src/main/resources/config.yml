@@ -12,7 +12,7 @@ economy:
 
 # Database configuration
 # The database is used to store the player's balance.
-# TYPE: mariadb, litesql
+# TYPE: mariadb, litesql, url
 database:
   type: litesql
   mariadb:
@@ -21,5 +21,8 @@ database:
     database: "economy"
     username: "user"
     password: ""
+    url: ""
   litesql:
     file: "economy.db"
+  url:
+    jdbc: "jdbc:mariadb://user:password@localhost:3306/economy"
