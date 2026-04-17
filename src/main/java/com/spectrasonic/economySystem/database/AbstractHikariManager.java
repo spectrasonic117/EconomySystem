@@ -97,16 +97,18 @@ public abstract class AbstractHikariManager implements DatabaseManager {
     @Override
     public void createAccount(String uuid) {
         double startBalance = plugin.getConfig().getDouble("economy.start-balance");
-        String sql = "INSERT INTO economy (uuid, balance) VALUES (?, ?)";
+        String sql = "INSERT IGNORE INTO economy (uuid, balance) VALUES (?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, uuid);
             ps.setDouble(2, startBalance);
-            ps.executeUpdate();
+            int rowsAffected = ps.executeUpdate();
 
-            createTransaction("SERVER", uuid, startBalance);
+            if (rowsAffected > 0) {
+                createTransaction("SERVER", uuid, startBalance);
+            }
 
         } catch (SQLException e) {
             plugin.getLogger().severe("Error creating account for " + uuid);
