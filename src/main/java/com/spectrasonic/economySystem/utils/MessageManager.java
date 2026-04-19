@@ -7,14 +7,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.File;
 import java.io.IOException;
 
-/**
- * Gestor de mensajes cargado desde un archivo YAML.
- * <p>
- * Los mensajes están bajo la clave raíz "messages" y pueden accederse
- * mediante {@code get("key")}, donde el key corresponde a
- * {@code messages.key}. Se sustituyen los placeholders pasando pares
- * clave‑valor en {@code placeholders}.
- */
 public class MessageManager {
 
     private final YamlConfiguration config;
@@ -29,13 +21,6 @@ public class MessageManager {
         }
     }
 
-    /**
-     * Obtiene un {@link Component} formateado.
-     *
-     * @param key          clave del mensaje sin el prefijo "messages."
-     * @param placeholders pares clave‑valor para sustitución
-     * @return componente listo para enviar
-     */
     public Component get(String key, Object... placeholders) {
         String fullKey = "messages." + key;
         if (!config.contains(fullKey)) {

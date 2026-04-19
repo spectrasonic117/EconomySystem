@@ -1,6 +1,7 @@
 package com.spectrasonic.economySystem.commands;
 
 import com.spectrasonic.economySystem.Main;
+import com.spectrasonic.economySystem.utils.MessageUtils;
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.EntitySelectorArgument;
 import dev.jorel.commandapi.arguments.IntegerArgument;
@@ -26,7 +27,7 @@ public class PayCommand {
     }
 
     private void handlePayUsage(Player player, CommandArguments args) {
-        player.sendMessage(plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
+        MessageUtils.alertComponent(player, plugin.getMessages().get("usage", "%usage%", "/pay <player> <amount>"));
     }
 
     private void handlePay(Player player, CommandArguments args) {
@@ -34,7 +35,7 @@ public class PayCommand {
         Integer amount = (Integer) args.get("amount");
 
         if (target == null) {
-            player.sendMessage(plugin.getMessages().get("player-not-found"));
+            MessageUtils.denyComponent(player, plugin.getMessages().get("player-not-found"));
             return;
         }
 
@@ -44,7 +45,7 @@ public class PayCommand {
         }
 
         if (target.equals(player)) {
-            player.sendMessage(plugin.getMessages().get("pay-self"));
+            MessageUtils.denyComponent(player, plugin.getMessages().get("pay-self"));
             return;
         }
 
@@ -57,7 +58,7 @@ public class PayCommand {
         double playerBalance = plugin.getDatabaseManager().getBalance(playerUuid);
 
         if (playerBalance < amount) {
-            player.sendMessage(plugin.getMessages().get("not-enough-money"));
+            MessageUtils.denyComponent(player, plugin.getMessages().get("not-enough-money"));
             return;
         }
 
@@ -65,8 +66,8 @@ public class PayCommand {
         plugin.getDatabaseManager().addBalance(targetUuid, amount);
         plugin.getDatabaseManager().createTransaction(playerUuid, targetUuid, amount);
 
-        player.sendMessage(plugin.getMessages().get("pay-success-sender", "%player%", target.getName(), "%amount%", String.valueOf(amount)));
-        target.sendMessage(plugin.getMessages().get("pay-success-receiver", "%player%", player.getName(), "%amount%", String.valueOf(amount)));
+        MessageUtils.successComponent(player, plugin.getMessages().get("pay-success-sender", "%player%", target.getName(), "%amount%", String.valueOf(amount)));
+        MessageUtils.successComponent(target, plugin.getMessages().get("pay-success-receiver", "%player%", player.getName(), "%amount%", String.valueOf(amount)));
     }
 
     private void checkAccount(String uuid) {

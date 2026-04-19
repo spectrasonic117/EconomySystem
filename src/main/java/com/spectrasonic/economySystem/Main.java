@@ -5,6 +5,7 @@ import com.spectrasonic.economySystem.managers.ConfigManager;
 import com.spectrasonic.economySystem.managers.LoadManager;
 import com.spectrasonic.economySystem.database.DatabaseManager;
 import com.spectrasonic.economySystem.utils.MessageManager;
+import com.spectrasonic.economySystem.utils.MessageUtils;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class Main extends JavaPlugin {
@@ -31,7 +32,7 @@ public final class Main extends JavaPlugin {
         commandManager = new CommandManager(this);
         commandManager.registerCommands();
 
-        getServer().getConsoleSender().sendMessage(configManager.getMessages().get("plugin-enabled"));
+        MessageUtils.sendStartupMessage(this);
     }
 
     @Override
@@ -40,9 +41,7 @@ public final class Main extends JavaPlugin {
             loadManager.shutdown();
         }
 
-        if (configManager != null && configManager.getMessages() != null) {
-            getServer().getConsoleSender().sendMessage(configManager.getMessages().get("plugin-disabled"));
-        }
+        MessageUtils.sendShutdownMessage(this);
     }
 
     public String formatBalance(double balance) {

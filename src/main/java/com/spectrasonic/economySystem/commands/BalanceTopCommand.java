@@ -1,9 +1,13 @@
 package com.spectrasonic.economySystem.commands;
 
 import com.spectrasonic.economySystem.Main;
-import dev.jorel.commandapi.CommandAPICommand;
+import com.spectrasonic.economySystem.utils.MessageUtils;
+import dev.jorel.commandapi.CommandTree;
+import dev.jorel.commandapi.CommandPermission;
+import dev.jorel.commandapi.arguments.LiteralArgument;
 import dev.jorel.commandapi.executors.CommandArguments;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 public class BalancetopCommand {
 
@@ -14,29 +18,45 @@ public class BalancetopCommand {
     }
 
     public void register() {
-        new CommandAPICommand("balancetop")
-            .withAliases("baltop", "topbalance", "topbal", "topgeld")
-            .executes(this::handleBalanceTop)
-            .register();
+        new CommandTree("balancetop")
+                .withAliases("baltop", "topbalance", "topbal", "topgeld", "top2")
+                .executes(this::handleBalanceTop)
+                .then(new LiteralArgument("all")
+                        .withPermission(CommandPermission.OP)
+                        .executes(this::handleBalanceTopAll))
+                .register();
     }
 
     private void handleBalanceTop(CommandSender sender, CommandArguments args) {
         var topBalances = plugin.getDatabaseManager().getTopBalances(10);
         plugin.getLogger().info("BalanceTop: Found " + topBalances.size() + " players");
 
-        sender.sendMessage(plugin.getMessages().get("top-list-title"));
+        sendTopList(sender, topBalances);
+    }
+
+    private void handleBalanceTopAll(CommandSender sender, CommandArguments args) {
+        var topBalances = plugin.getDatabaseManager().getTopBalances(10);
+        plugin.getLogger().info("BalanceTop: Found " + topBalances.size() + " players");
+
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            sendTopList(player, topBalances);
+        }
+    }
+
+    private void sendTopList(CommandSender sender, java.util.Map<String, Double> topBalances) {
+        MessageUtils.infoComponent(sender, plugin.getMessages().get("top-list-title"));
         if (topBalances.isEmpty()) {
-            sender.sendMessage(plugin.getMessages().get("no-players-found"));
+            MessageUtils.warningComponent(sender, plugin.getMessages().get("no-players-found"));
         } else {
             int i = 1;
             for (var entry : topBalances.entrySet()) {
                 String uuid = entry.getKey();
                 double balance = entry.getValue();
                 String playerName = plugin.getServer().getOfflinePlayer(java.util.UUID.fromString(uuid)).getName();
-                
-                sender.sendMessage(plugin.getMessages().get("top-list-entry", 
-                        "%position%", String.valueOf(i++), 
-                        "%player%", playerName != null ? playerName : "Unknown", 
+
+                MessageUtils.infoComponent(sender, plugin.getMessages().get("top-list-entry",
+                        "%position%", String.valueOf(i++),
+                        "%player%", playerName != null ? playerName : "Unknown",
                         "%balance%", String.valueOf(balance)));
             }
         }

@@ -1,6 +1,7 @@
 package com.spectrasonic.economySystem.commands;
 
 import com.spectrasonic.economySystem.Main;
+import com.spectrasonic.economySystem.utils.MessageUtils;
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.CommandPermission;
 import dev.jorel.commandapi.arguments.EntitySelectorArgument;
@@ -48,20 +49,20 @@ public class EconomyadminCommand {
     }
 
     private void sendUsage(CommandSender sender, CommandArguments args) {
-        sender.sendMessage(plugin.getMessages().get("usage", "%usage%",
+        MessageUtils.alertComponent(sender, plugin.getMessages().get("usage", "%usage%",
                 "/economyadmin <set|add|remove|reset|balance|reload> <player> [amount]"));
     }
 
     private void handleReload(CommandSender sender, CommandArguments args) {
         plugin.reloadConfig();
         plugin.getConfigManager().loadMessages();
-        sender.sendMessage("Plugin configuration and messages reloaded.");
+        MessageUtils.successMessage(sender, "Plugin configuration and messages reloaded.");
     }
 
     private void handleBalance(CommandSender sender, CommandArguments args) {
         Collection<Player> players = (Collection<Player>) args.get("players");
         if (players == null || players.isEmpty()) {
-            sender.sendMessage(plugin.getMessages().get("player-not-found"));
+            MessageUtils.denyComponent(sender, plugin.getMessages().get("player-not-found"));
             return;
         }
 
@@ -69,7 +70,7 @@ public class EconomyadminCommand {
             String playerUuid = player.getUniqueId().toString();
             checkAccount(playerUuid);
             double balance = plugin.getDatabaseManager().getBalance(playerUuid);
-            sender.sendMessage(plugin.getMessages().get("balance-message-other", "%player%",
+            MessageUtils.infoComponent(sender, plugin.getMessages().get("balance-message-other", "%player%",
                     player.getName(), "%balance%", String.valueOf(balance)));
         }
     }
@@ -79,11 +80,11 @@ public class EconomyadminCommand {
         Integer amount = (Integer) args.get("amount");
 
         if (players == null || players.isEmpty()) {
-            sender.sendMessage(plugin.getMessages().get("player-not-found"));
+            MessageUtils.denyComponent(sender, plugin.getMessages().get("player-not-found"));
             return;
         }
         if (amount == null || amount < 0) {
-            sender.sendMessage(plugin.getMessages().get("usage", "%usage%",
+            MessageUtils.alertComponent(sender, plugin.getMessages().get("usage", "%usage%",
                     "/economyadmin set <player> <amount>"));
             return;
         }
@@ -92,7 +93,7 @@ public class EconomyadminCommand {
             String playerUuid = player.getUniqueId().toString();
             checkAccount(playerUuid);
             plugin.getDatabaseManager().setBalance(playerUuid, amount);
-            sender.sendMessage(plugin.getMessages().get("balance-set-success", "%player%",
+            MessageUtils.successComponent(sender, plugin.getMessages().get("balance-set-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
         }
     }
@@ -102,11 +103,11 @@ public class EconomyadminCommand {
         Integer amount = (Integer) args.get("amount");
 
         if (players == null || players.isEmpty()) {
-            sender.sendMessage(plugin.getMessages().get("player-not-found"));
+            MessageUtils.denyComponent(sender, plugin.getMessages().get("player-not-found"));
             return;
         }
         if (amount == null || amount <= 0) {
-            sender.sendMessage(plugin.getMessages().get("usage", "%usage%",
+            MessageUtils.alertComponent(sender, plugin.getMessages().get("usage", "%usage%",
                     "/economyadmin add <player> <amount>"));
             return;
         }
@@ -115,7 +116,7 @@ public class EconomyadminCommand {
             String playerUuid = player.getUniqueId().toString();
             checkAccount(playerUuid);
             plugin.getDatabaseManager().addBalance(playerUuid, amount);
-            sender.sendMessage(plugin.getMessages().get("balance-add-success", "%player%",
+            MessageUtils.successComponent(sender, plugin.getMessages().get("balance-add-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
         }
     }
@@ -125,11 +126,11 @@ public class EconomyadminCommand {
         Integer amount = (Integer) args.get("amount");
 
         if (players == null || players.isEmpty()) {
-            sender.sendMessage(plugin.getMessages().get("player-not-found"));
+            MessageUtils.denyComponent(sender, plugin.getMessages().get("player-not-found"));
             return;
         }
         if (amount == null || amount <= 0) {
-            sender.sendMessage(plugin.getMessages().get("usage", "%usage%",
+            MessageUtils.alertComponent(sender, plugin.getMessages().get("usage", "%usage%",
                     "/economyadmin remove <player> <amount>"));
             return;
         }
@@ -138,7 +139,7 @@ public class EconomyadminCommand {
             String playerUuid = player.getUniqueId().toString();
             checkAccount(playerUuid);
             plugin.getDatabaseManager().removeBalance(playerUuid, amount);
-            sender.sendMessage(plugin.getMessages().get("remove-balance-success", "%player%",
+            MessageUtils.successComponent(sender, plugin.getMessages().get("remove-balance-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
         }
     }
@@ -146,7 +147,7 @@ public class EconomyadminCommand {
     private void handleReset(CommandSender sender, CommandArguments args) {
         Collection<Player> players = (Collection<Player>) args.get("players");
         if (players == null || players.isEmpty()) {
-            sender.sendMessage(plugin.getMessages().get("player-not-found"));
+            MessageUtils.denyComponent(sender, plugin.getMessages().get("player-not-found"));
             return;
         }
 
@@ -154,7 +155,7 @@ public class EconomyadminCommand {
             String playerUuid = player.getUniqueId().toString();
             checkAccount(playerUuid);
             plugin.getDatabaseManager().setBalance(playerUuid, 0);
-            sender.sendMessage(plugin.getMessages().get("balance-set-success", "%player%",
+            MessageUtils.successComponent(sender, plugin.getMessages().get("balance-set-success", "%player%",
                     player.getName(), "%amount%", "0"));
         }
     }
