@@ -54,7 +54,7 @@ public class BalancetopCommand {
                 double balance = entry.getValue();
                 String playerName = plugin.getServer().getOfflinePlayer(java.util.UUID.fromString(uuid)).getName();
 
-                MessageUtils.infoComponent(sender, plugin.getMessages().get("top-list-entry",
+                MessageUtils.rawComponent(sender, plugin.getMessages().get("top-list-entry",
                         "%position%", String.valueOf(i++),
                         "%player%", playerName != null ? playerName : "Unknown",
                         "%balance%", String.valueOf(balance)));

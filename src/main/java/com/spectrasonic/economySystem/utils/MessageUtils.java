@@ -19,7 +19,6 @@ public final class MessageUtils {
 
     // Alert Prefixes
 
-    public static final String CLOSE_PREFIX = "</#9e9893>";
     public static final String SUCCESS_PREFIX = "<green><b>[✔]</b><green> <#9e9893>";
     public static final String ALERT_PREFIX = "<yellow><b>[!]</b><yellow> <#9e9893>";
     public static final String DENY_PREFIX = "<red><b>[✖]</b><red> <#9e9893>";
@@ -47,66 +46,77 @@ public final class MessageUtils {
 
     public static void sendPermissionMessage(CommandSender sender) {
         sender.sendMessage(
-                miniMessage.deserialize(PREFIX + "<#ff003c><b>[x]</b> <#9e9893>Insufficient permissions<#9e9893>"));
+                miniMessage.deserialize(PREFIX + "<#ff003c><b>[x]</b> <#9e9893>Insufficient permissions"));
     }
 
     public static void OnlyPlayerMessage(CommandSender sender) {
-        miniMessage.deserialize(
-                PREFIX + "<#ff003c><b>[x]</b> <#9e9893>Only players can use this command<#9e9893>");
+        sender.sendMessage(
+                miniMessage.deserialize(PREFIX + "<#ff003c><b>[x]</b> <#9e9893>Only players can use this command"));
     }
 
     public static void configReloadedMessage(CommandSender sender) {
-        miniMessage.deserialize(PREFIX + "<green><b>[✔️]</b> <#9e9893>Config Reloaded</#9e9893>");
+        sender.sendMessage(
+                miniMessage.deserialize(PREFIX + "<green><b>[✔️]</b> <#9e9893>Config Reloaded"));
     }
 
     // Alert Messages
 
     public static void successMessage(CommandSender sender, String message) {
-        sender.sendMessage(miniMessage.deserialize(SUCCESS_PREFIX + message + CLOSE_PREFIX));
+        sender.sendMessage(miniMessage.deserialize(SUCCESS_PREFIX + message));
     }
 
     public static void alertMessage(CommandSender sender, String message) {
-        sender.sendMessage(miniMessage.deserialize(ALERT_PREFIX + message + CLOSE_PREFIX));
+        sender.sendMessage(miniMessage.deserialize(ALERT_PREFIX + message));
     }
 
     public static void denyMessage(CommandSender sender, String message) {
-        sender.sendMessage(miniMessage.deserialize(DENY_PREFIX + message + CLOSE_PREFIX));
+        sender.sendMessage(miniMessage.deserialize(DENY_PREFIX + message));
     }
 
     public static void warningMessage(CommandSender sender, String message) {
-        sender.sendMessage(miniMessage.deserialize(WARNING_PREFIX + message + CLOSE_PREFIX));
+        sender.sendMessage(miniMessage.deserialize(WARNING_PREFIX + message));
     }
 
     public static void infoMessage(CommandSender sender, String message) {
-        sender.sendMessage(miniMessage.deserialize(INFO_PREFIX + message + CLOSE_PREFIX));
+        sender.sendMessage(miniMessage.deserialize(INFO_PREFIX + message));
     }
 
     public static void debugMessage(CommandSender sender, String message) {
-        sender.sendMessage(miniMessage.deserialize(DEBUG_PREFIX + message + CLOSE_PREFIX));
+        sender.sendMessage(miniMessage.deserialize(DEBUG_PREFIX + message));
     }
 
-    public static void successComponent(CommandSender sender, net.kyori.adventure.text.Component message) {
-        sender.sendMessage(miniMessage.deserialize(SUCCESS_PREFIX).append(message).append(miniMessage.deserialize(CLOSE_PREFIX)));
+    public static void successComponent(CommandSender sender, Component message) {
+        sender.sendMessage(
+                miniMessage.deserialize(SUCCESS_PREFIX).append(message));
     }
 
-    public static void alertComponent(CommandSender sender, net.kyori.adventure.text.Component message) {
-        sender.sendMessage(miniMessage.deserialize(ALERT_PREFIX).append(message).append(miniMessage.deserialize(CLOSE_PREFIX)));
+    public static void alertComponent(CommandSender sender, Component message) {
+        sender.sendMessage(
+                miniMessage.deserialize(ALERT_PREFIX).append(message));
     }
 
-    public static void denyComponent(CommandSender sender, net.kyori.adventure.text.Component message) {
-        sender.sendMessage(miniMessage.deserialize(DENY_PREFIX).append(message).append(miniMessage.deserialize(CLOSE_PREFIX)));
+    public static void denyComponent(CommandSender sender, Component message) {
+        sender.sendMessage(
+                miniMessage.deserialize(DENY_PREFIX).append(message));
     }
 
-    public static void warningComponent(CommandSender sender, net.kyori.adventure.text.Component message) {
-        sender.sendMessage(miniMessage.deserialize(WARNING_PREFIX).append(message).append(miniMessage.deserialize(CLOSE_PREFIX)));
+    public static void warningComponent(CommandSender sender, Component message) {
+        sender.sendMessage(
+                miniMessage.deserialize(WARNING_PREFIX).append(message));
     }
 
-    public static void infoComponent(CommandSender sender, net.kyori.adventure.text.Component message) {
-        sender.sendMessage(miniMessage.deserialize(INFO_PREFIX).append(message).append(miniMessage.deserialize(CLOSE_PREFIX)));
+    public static void infoComponent(CommandSender sender, Component message) {
+        sender.sendMessage(
+                miniMessage.deserialize(INFO_PREFIX).append(message));
     }
 
-    public static void debugComponent(CommandSender sender, net.kyori.adventure.text.Component message) {
-        sender.sendMessage(miniMessage.deserialize(DEBUG_PREFIX).append(message).append(miniMessage.deserialize(CLOSE_PREFIX)));
+    public static void debugComponent(CommandSender sender, Component message) {
+        sender.sendMessage(
+                miniMessage.deserialize(DEBUG_PREFIX).append(message));
+    }
+
+    public static void rawComponent(CommandSender sender, Component message) {
+        sender.sendMessage(message);
     }
 
     public static void sendStartupMessage(JavaPlugin plugin) {
