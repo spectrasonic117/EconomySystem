@@ -28,19 +28,27 @@ public class BalancetopCommand {
     }
 
     private void handleBalanceTop(CommandSender sender, CommandArguments args) {
-        var topBalances = plugin.getDatabaseManager().getTopBalances(10);
+        var topBalances = getTopBalances(10);
         plugin.getLogger().info("BalanceTop: Found " + topBalances.size() + " players");
 
         sendTopList(sender, topBalances);
     }
 
     private void handleBalanceTopAll(CommandSender sender, CommandArguments args) {
-        var topBalances = plugin.getDatabaseManager().getTopBalances(10);
+        var topBalances = getTopBalances(10);
         plugin.getLogger().info("BalanceTop: Found " + topBalances.size() + " players");
 
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             sendTopList(player, topBalances);
         }
+    }
+
+    private java.util.LinkedHashMap<String, Double> getTopBalances(int limit) {
+        if (plugin.getCacheManager() != null) {
+            return plugin.getCacheManager().getTopBalances(limit);
+        }
+
+        return plugin.getDatabaseManager().getTopBalances(limit);
     }
 
     private void sendTopList(CommandSender sender, java.util.Map<String, Double> topBalances) {

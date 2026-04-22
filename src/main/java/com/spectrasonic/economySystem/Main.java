@@ -1,5 +1,7 @@
 package com.spectrasonic.economySystem;
 
+import com.spectrasonic.economySystem.cache.CacheManager;
+import com.spectrasonic.economySystem.cache.FlushScheduler;
 import com.spectrasonic.economySystem.managers.CommandManager;
 import com.spectrasonic.economySystem.managers.ConfigManager;
 import com.spectrasonic.economySystem.managers.LoadManager;
@@ -23,6 +25,7 @@ public final class Main extends JavaPlugin {
         configManager.loadMessages();
         configManager.setupPermissions();
         configManager.setupDatabase();
+        configManager.setupCache();
 
         loadManager = new LoadManager(this, configManager);
         loadManager.registerPlaceholderAPI();
@@ -39,6 +42,16 @@ public final class Main extends JavaPlugin {
     public void onDisable() {
         if (loadManager != null) {
             loadManager.shutdown();
+        }
+
+        if (configManager.getFlushScheduler() != null) {
+            configManager.getFlushScheduler().stop();
+        }
+
+        if (configManager.getCacheManager() != null) {
+            getLogger().info("Flushing cache before shutdown...");
+            configManager.getCacheManager().flushAllSync();
+            getLogger().info("Cache flushed successfully.");
         }
 
         MessageUtils.sendShutdownMessage(this);
@@ -80,5 +93,13 @@ public final class Main extends JavaPlugin {
 
     public DatabaseManager getDatabaseManager() {
         return configManager.getDatabaseManager();
+    }
+
+    public CacheManager getCacheManager() {
+        return configManager.getCacheManager();
+    }
+
+    public FlushScheduler getFlushScheduler() {
+        return configManager.getFlushScheduler();
     }
 }

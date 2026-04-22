@@ -69,7 +69,7 @@ public class EconomyadminCommand {
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
             checkAccount(playerUuid);
-            double balance = plugin.getDatabaseManager().getBalance(playerUuid);
+            double balance = getBalance(playerUuid);
             MessageUtils.infoComponent(sender, plugin.getMessages().get("balance-message-other", "%player%",
                     player.getName(), "%balance%", String.valueOf(balance)));
         }
@@ -92,7 +92,7 @@ public class EconomyadminCommand {
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
             checkAccount(playerUuid);
-            plugin.getDatabaseManager().setBalance(playerUuid, amount);
+            setBalance(playerUuid, amount);
             MessageUtils.successComponent(sender, plugin.getMessages().get("balance-set-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
         }
@@ -115,7 +115,7 @@ public class EconomyadminCommand {
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
             checkAccount(playerUuid);
-            plugin.getDatabaseManager().addBalance(playerUuid, amount);
+            addBalance(playerUuid, amount);
             MessageUtils.successComponent(sender, plugin.getMessages().get("balance-add-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
         }
@@ -138,7 +138,7 @@ public class EconomyadminCommand {
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
             checkAccount(playerUuid);
-            plugin.getDatabaseManager().removeBalance(playerUuid, amount);
+            removeBalance(playerUuid, amount);
             MessageUtils.successComponent(sender, plugin.getMessages().get("remove-balance-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
         }
@@ -154,15 +154,51 @@ public class EconomyadminCommand {
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
             checkAccount(playerUuid);
-            plugin.getDatabaseManager().setBalance(playerUuid, 0);
+            setBalance(playerUuid, 0);
             MessageUtils.successComponent(sender, plugin.getMessages().get("balance-set-success", "%player%",
                     player.getName(), "%amount%", "0"));
         }
     }
 
     private void checkAccount(String playerUuid) {
-        if (!plugin.getDatabaseManager().accountExists(playerUuid)) {
-            plugin.getDatabaseManager().createAccount(playerUuid);
+        if (!getCacheManager().accountExists(playerUuid)) {
+            getCacheManager().createAccount(playerUuid);
         }
+    }
+
+    private double getBalance(String uuid) {
+        if (plugin.getCacheManager() != null) {
+            return plugin.getCacheManager().getBalance(uuid);
+        }
+
+        return plugin.getDatabaseManager().getBalance(uuid);
+    }
+
+    private void setBalance(String uuid, double amount) {
+        if (plugin.getCacheManager() != null) {
+            plugin.getCacheManager().setBalance(uuid, amount);
+        } else {
+            plugin.getDatabaseManager().setBalance(uuid, amount);
+        }
+    }
+
+    private void addBalance(String uuid, double amount) {
+        if (plugin.getCacheManager() != null) {
+            plugin.getCacheManager().addBalance(uuid, amount);
+        } else {
+            plugin.getDatabaseManager().addBalance(uuid, amount);
+        }
+    }
+
+    private void removeBalance(String uuid, double amount) {
+        if (plugin.getCacheManager() != null) {
+            plugin.getCacheManager().removeBalance(uuid, amount);
+        } else {
+            plugin.getDatabaseManager().removeBalance(uuid, amount);
+        }
+    }
+
+    private com.spectrasonic.economySystem.cache.CacheManager getCacheManager() {
+        return plugin.getCacheManager();
     }
 }

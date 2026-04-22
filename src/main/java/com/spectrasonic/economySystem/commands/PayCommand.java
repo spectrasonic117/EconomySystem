@@ -55,24 +55,52 @@ public class PayCommand {
         checkAccount(playerUuid);
         checkAccount(targetUuid);
 
-        double playerBalance = plugin.getDatabaseManager().getBalance(playerUuid);
+        double playerBalance = getBalance(playerUuid);
 
         if (playerBalance < amount) {
             MessageUtils.denyComponent(player, plugin.getMessages().get("not-enough-money"));
             return;
         }
 
-        plugin.getDatabaseManager().removeBalance(playerUuid, amount);
-        plugin.getDatabaseManager().addBalance(targetUuid, amount);
-        plugin.getDatabaseManager().createTransaction(playerUuid, targetUuid, amount);
+        removeBalance(playerUuid, amount);
+        addBalance(targetUuid, amount);
+        getCacheManager().createTransaction(playerUuid, targetUuid, amount);
 
         MessageUtils.successComponent(player, plugin.getMessages().get("pay-success-sender", "%player%", target.getName(), "%amount%", String.valueOf(amount)));
         MessageUtils.successComponent(target, plugin.getMessages().get("pay-success-receiver", "%player%", player.getName(), "%amount%", String.valueOf(amount)));
     }
 
     private void checkAccount(String uuid) {
-        if (!plugin.getDatabaseManager().accountExists(uuid)) {
-            plugin.getDatabaseManager().createAccount(uuid);
+        if (!getCacheManager().accountExists(uuid)) {
+            getCacheManager().createAccount(uuid);
         }
+    }
+
+    private double getBalance(String uuid) {
+        if (plugin.getCacheManager() != null) {
+            return plugin.getCacheManager().getBalance(uuid);
+        }
+
+        return plugin.getDatabaseManager().getBalance(uuid);
+    }
+
+    private void addBalance(String uuid, double amount) {
+        if (plugin.getCacheManager() != null) {
+            plugin.getCacheManager().addBalance(uuid, amount);
+        } else {
+            plugin.getDatabaseManager().addBalance(uuid, amount);
+        }
+    }
+
+    private void removeBalance(String uuid, double amount) {
+        if (plugin.getCacheManager() != null) {
+            plugin.getCacheManager().removeBalance(uuid, amount);
+        } else {
+            plugin.getDatabaseManager().removeBalance(uuid, amount);
+        }
+    }
+
+    private com.spectrasonic.economySystem.cache.CacheManager getCacheManager() {
+        return plugin.getCacheManager();
     }
 }

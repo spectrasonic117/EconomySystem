@@ -29,7 +29,7 @@ public class BalanceCommand {
     private void handleBalanceSelf(Player player, CommandArguments args) {
         String uuid = player.getUniqueId().toString();
         checkAccount(uuid);
-        double balance = plugin.getDatabaseManager().getBalance(uuid);
+        double balance = getBalance(uuid);
         MessageUtils.infoComponent(player, plugin.getMessages().get("balance-message-own", "%balance%", String.valueOf(balance)));
     }
 
@@ -41,7 +41,7 @@ public class BalanceCommand {
 
         Player player = (Player) sender;
         Player target = (Player) args.get("player");
-        
+
         if (target == null) {
             MessageUtils.denyComponent(player, plugin.getMessages().get("player-not-found"));
             return;
@@ -49,13 +49,25 @@ public class BalanceCommand {
 
         String targetUuid = target.getUniqueId().toString();
         checkAccount(targetUuid);
-        double balance = plugin.getDatabaseManager().getBalance(targetUuid);
+        double balance = getBalance(targetUuid);
         MessageUtils.infoComponent(player, plugin.getMessages().get("balance-message-other", "%player%", target.getName(), "%balance%", String.valueOf(balance)));
     }
 
     private void checkAccount(String uuid) {
-        if (!plugin.getDatabaseManager().accountExists(uuid)) {
-            plugin.getDatabaseManager().createAccount(uuid);
+        if (!getCacheManager().accountExists(uuid)) {
+            getCacheManager().createAccount(uuid);
         }
+    }
+
+    private double getBalance(String uuid) {
+        if (plugin.getCacheManager() != null) {
+            return plugin.getCacheManager().getBalance(uuid);
+        }
+
+        return plugin.getDatabaseManager().getBalance(uuid);
+    }
+
+    private com.spectrasonic.economySystem.cache.CacheManager getCacheManager() {
+        return plugin.getCacheManager();
     }
 }
