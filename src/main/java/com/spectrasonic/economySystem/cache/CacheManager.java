@@ -3,10 +3,8 @@ package com.spectrasonic.economySystem.cache;
 import com.spectrasonic.economySystem.Main;
 import com.spectrasonic.economySystem.database.DatabaseManager;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class CacheManager {
@@ -17,6 +15,9 @@ public class CacheManager {
     private final AtomicLong hitCount = new AtomicLong(0);
     private final AtomicLong missCount = new AtomicLong(0);
     private final AtomicLong flushCount = new AtomicLong(0);
+
+    private final ConcurrentLinkedQueue<String> dirtyQueue = new ConcurrentLinkedQueue<>();
+    private final Set<String> queuedKeys = ConcurrentHashMap.newKeySet();
 
     public CacheManager(Main plugin, DatabaseManager databaseManager) {
         this.plugin = plugin;
@@ -50,6 +51,7 @@ public class CacheManager {
         });
 
         entry.setBalance(balance);
+        markDirty(uuid);
     }
 
     public void addBalance(String uuid, double amount) {
@@ -59,6 +61,7 @@ public class CacheManager {
         });
 
         entry.addBalance(amount);
+        markDirty(uuid);
     }
 
     public void removeBalance(String uuid, double amount) {
@@ -68,6 +71,7 @@ public class CacheManager {
         });
 
         entry.removeBalance(amount);
+        markDirty(uuid);
     }
 
     public void createAccount(String uuid) {
@@ -97,7 +101,7 @@ public class CacheManager {
     }
 
     public LinkedHashMap<String, Double> getTopBalances(int limit) {
-        flushDirtyEntries();
+        flushAllSync();
 
         LinkedHashMap<String, Double> topBalances = databaseManager.getTopBalances(limit);
 
@@ -127,62 +131,56 @@ public class CacheManager {
     }
 
     public CompletableFuture<Void> flushDirtyEntries() {
-        Map<String, CacheEntry> dirtyEntries = getDirtyEntries();
+        flushAllSync();
+        return CompletableFuture.completedFuture(null);
+    }
 
-        if (dirtyEntries.isEmpty()) {
-            return CompletableFuture.completedFuture(null);
-        }
+    public int flushBatch(int maxBatchSize) {
+        Map<String, Double> batch = pollDirtyBatch(maxBatchSize);
+        if (batch.isEmpty()) return 0;
 
-        return CompletableFuture.runAsync(() -> {
-            long startTime = System.currentTimeMillis();
+        databaseManager.batchUpdateBalance(batch);
+        markBatchClean(batch.keySet());
 
-            for (Map.Entry<String, CacheEntry> entry : dirtyEntries.entrySet()) {
-                String uuid = entry.getKey();
-                CacheEntry cacheEntry = entry.getValue();
-
-                databaseManager.setBalance(uuid, cacheEntry.getBalance());
-                cacheEntry.markClean();
-            }
-
-            long duration = System.currentTimeMillis() - startTime;
-            flushCount.incrementAndGet();
-
-            plugin.getLogger().info(String.format(
-                "Cache flush completed: %d entries in %dms (Total flushes: %d)",
-                dirtyEntries.size(),
-                duration,
-                flushCount.get()
-            ));
-        });
+        return batch.size();
     }
 
     public void flushAllSync() {
-        Map<String, CacheEntry> dirtyEntries = getDirtyEntries();
+        Map<String, Double> batch = new LinkedHashMap<>();
+        cache.forEach((uuid, entry) -> {
+            if (entry.isDirty()) {
+                batch.put(uuid, entry.getBalance());
+            }
+        });
 
-        if (dirtyEntries.isEmpty()) {
-            return;
-        }
+        if (batch.isEmpty()) return;
 
         long startTime = System.currentTimeMillis();
 
-        for (Map.Entry<String, CacheEntry> entry : dirtyEntries.entrySet()) {
-            String uuid = entry.getKey();
-            CacheEntry cacheEntry = entry.getValue();
+        databaseManager.batchUpdateBalance(batch);
 
-            databaseManager.setBalance(uuid, cacheEntry.getBalance());
-            cacheEntry.markClean();
-        }
+        batch.keySet().forEach(uuid -> {
+            CacheEntry entry = cache.get(uuid);
+            if (entry != null) entry.markClean();
+        });
+
+        dirtyQueue.clear();
+        queuedKeys.clear();
 
         long duration = System.currentTimeMillis() - startTime;
+        flushCount.incrementAndGet();
+
         plugin.getLogger().info(String.format(
-            "Synchronous cache flush completed: %d entries in %dms",
-            dirtyEntries.size(),
-            duration
+            "Cache flush completed: %d entries in %dms (Total flushes: %d)",
+            batch.size(),
+            duration,
+            flushCount.get()
         ));
     }
 
     public void evictEntry(String uuid) {
         CacheEntry entry = cache.remove(uuid);
+        queuedKeys.remove(uuid);
         if (entry != null && entry.isDirty()) {
             databaseManager.setBalance(uuid, entry.getBalance());
         }
@@ -191,6 +189,8 @@ public class CacheManager {
     public void clearCache() {
         flushAllSync();
         cache.clear();
+        dirtyQueue.clear();
+        queuedKeys.clear();
     }
 
     public int getCacheSize() {
@@ -208,6 +208,10 @@ public class CacheManager {
         return count;
     }
 
+    public int getQueuedDirtyCount() {
+        return dirtyQueue.size();
+    }
+
     public double getHitRate() {
         long total = hitCount.get() + missCount.get();
         if (total == 0) {
@@ -215,6 +219,37 @@ public class CacheManager {
         }
 
         return (double) hitCount.get() / total * 100;
+    }
+
+    private void markDirty(String uuid) {
+        if (queuedKeys.add(uuid)) {
+            dirtyQueue.add(uuid);
+        }
+    }
+
+    private Map<String, Double> pollDirtyBatch(int maxBatchSize) {
+        Map<String, Double> batch = new LinkedHashMap<>();
+        String uuid;
+
+        while ((uuid = dirtyQueue.poll()) != null) {
+            queuedKeys.remove(uuid);
+            CacheEntry entry = cache.get(uuid);
+            if (entry != null && entry.isDirty()) {
+                batch.put(uuid, entry.getBalance());
+                if (batch.size() >= maxBatchSize) break;
+            }
+        }
+
+        return batch;
+    }
+
+    private void markBatchClean(Set<String> uuids) {
+        for (String uuid : uuids) {
+            CacheEntry entry = cache.get(uuid);
+            if (entry != null) {
+                entry.markClean();
+            }
+        }
     }
 
     private double loadFromDatabase(String uuid) {

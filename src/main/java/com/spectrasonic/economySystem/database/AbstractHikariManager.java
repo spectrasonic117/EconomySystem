@@ -7,8 +7,7 @@ import com.spectrasonic.economySystem.events.BalanceChangeEvent;
 import org.bukkit.Bukkit;
 
 import java.sql.*;
-import java.util.LinkedHashMap;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -228,6 +227,48 @@ public abstract class AbstractHikariManager implements DatabaseManager {
         }
 
         return map;
+    }
+
+    @Override
+    public void batchUpdateBalance(Map<String, Double> entries) {
+        if (entries == null || entries.isEmpty()) return;
+
+        String sql = "UPDATE economy SET balance = ? WHERE uuid = ?";
+
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                for (Map.Entry<String, Double> entry : entries.entrySet()) {
+                    double balance = Math.max(0, entry.getValue());
+                    ps.setDouble(1, balance);
+                    ps.setString(2, entry.getKey());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+
+            for (Map.Entry<String, Double> entry : entries.entrySet()) {
+                try {
+                    BalanceChangeEvent evt = new BalanceChangeEvent(
+                            Bukkit.getPlayer(UUID.fromString(entry.getKey())),
+                            entry.getValue(),
+                            !Bukkit.isPrimaryThread()
+                    );
+                    Bukkit.getPluginManager().callEvent(evt);
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Error in batch balance update: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Override

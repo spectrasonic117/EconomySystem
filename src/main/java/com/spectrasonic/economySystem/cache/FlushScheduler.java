@@ -39,7 +39,7 @@ public class FlushScheduler {
         ).getTaskId();
 
         plugin.getLogger().info(String.format(
-            "Flush scheduler started with interval: %d seconds",
+            "Adaptive flush scheduler started with interval: %d seconds",
             flushIntervalTicks / 20
         ));
     }
@@ -54,24 +54,37 @@ public class FlushScheduler {
 
     private void performFlush() {
         int maxBatchSize = plugin.getConfig().getInt("cache.max-batch-size", 50);
-        int dirtyCount = cacheManager.getDirtyCount();
+        int maxBurstsPerCycle = plugin.getConfig().getInt("cache.max-bursts-per-cycle", 10);
+        int burstDelayMs = plugin.getConfig().getInt("cache.burst-delay-ms", 100);
 
-        if (dirtyCount == 0) {
-            return;
+        int totalFlushed = 0;
+        long startTime = System.currentTimeMillis();
+
+        for (int burst = 0; burst < maxBurstsPerCycle; burst++) {
+            int flushed = cacheManager.flushBatch(maxBatchSize);
+            totalFlushed += flushed;
+
+            if (flushed == 0) break;
+            if (flushed < maxBatchSize) break;
+
+            if (burstDelayMs > 0 && burst < maxBurstsPerCycle - 1) {
+                try {
+                    Thread.sleep(burstDelayMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
 
-        if (dirtyCount <= maxBatchSize) {
-            cacheManager.flushDirtyEntries().whenComplete((result, ex) -> {
-                if (ex != null) {
-                    plugin.getLogger().severe("Error during cache flush: " + ex.getMessage());
-                    ex.printStackTrace();
-                }
-            });
-        } else {
+        if (totalFlushed > 0) {
+            long duration = System.currentTimeMillis() - startTime;
             plugin.getLogger().info(String.format(
-                "Dirty entries (%d) exceed max batch size (%d). Flushing in next cycle.",
-                dirtyCount,
-                maxBatchSize
+                "Aggressive flush: %d entries in %dms (%d bursts, queue remaining: %d)",
+                totalFlushed,
+                duration,
+                Math.min((totalFlushed + maxBatchSize - 1) / maxBatchSize, maxBurstsPerCycle),
+                cacheManager.getQueuedDirtyCount()
             ));
         }
     }

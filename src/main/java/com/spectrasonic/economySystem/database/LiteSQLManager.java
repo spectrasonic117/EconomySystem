@@ -7,8 +7,8 @@ import org.bukkit.Bukkit;
 import java.io.File;
 import java.io.IOException;
 import java.sql.*;
-import java.util.LinkedHashMap;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 @SuppressWarnings("unused")
 public class LiteSQLManager implements DatabaseManager {
@@ -16,6 +16,7 @@ public class LiteSQLManager implements DatabaseManager {
     private final Main plugin;
     private Connection connection;
     private final File databaseFile;
+    private final ReentrantLock writeLock = new ReentrantLock();
 
     public LiteSQLManager(Main plugin) {
         this.plugin = plugin;
@@ -188,6 +189,43 @@ public class LiteSQLManager implements DatabaseManager {
             plugin.getLogger().severe("Error fetching top balances.");
         }
         return topBalances;
+    }
+
+    @Override
+    public void batchUpdateBalance(Map<String, Double> entries) {
+        if (entries == null || entries.isEmpty()) return;
+
+        writeLock.lock();
+        try {
+            String sql = "UPDATE economy SET balance = ? WHERE uuid = ?";
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                for (Map.Entry<String, Double> entry : entries.entrySet()) {
+                    double balance = Math.max(0, entry.getValue());
+                    ps.setDouble(1, balance);
+                    ps.setString(2, entry.getKey());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+
+            for (Map.Entry<String, Double> entry : entries.entrySet()) {
+                try {
+                    BalanceChangeEvent evt = new BalanceChangeEvent(
+                            Bukkit.getPlayer(UUID.fromString(entry.getKey())),
+                            entry.getValue(),
+                            !Bukkit.isPrimaryThread()
+                    );
+                    Bukkit.getPluginManager().callEvent(evt);
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Error in SQLite batch balance update: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     @Override

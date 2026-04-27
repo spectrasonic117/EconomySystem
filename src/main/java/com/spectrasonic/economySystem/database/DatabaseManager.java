@@ -1,6 +1,7 @@
 package com.spectrasonic.economySystem.database;
 
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 public interface DatabaseManager {
     void connect();
@@ -22,4 +23,6 @@ public interface DatabaseManager {
     void createTransaction(String uuidFrom, String uuidTo, double amount);
 
     LinkedHashMap<String, Double> getTopBalances(int limit);
+
+    void batchUpdateBalance(Map<String, Double> entries);
 }

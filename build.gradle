@@ -24,7 +24,7 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 
-dependencies {  
+dependencies {
     // compileOnly "io.papermc.paper:paper-api:${paperVersion}"
     paperweight.paperDevBundle("${MinecraftVersion}-R0.1-SNAPSHOT")
 
@@ -35,8 +35,8 @@ dependencies {
     compileOnly("com.github.MilkBowl:VaultAPI:${vaultVersion}") {
         exclude group: 'org.bukkit', module: 'bukkit'
     }
-   
-    // Lomok    
+
+    // Lomok
     compileOnly("org.projectlombok:lombok:${lombokVersion}")
 	  annotationProcessor("org.projectlombok:lombok:${lombokVersion}")
 
