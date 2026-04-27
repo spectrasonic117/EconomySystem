@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'com.gradleup.shadow' version '9.3.2'
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.21"
 }
 
 group = "${pluginGroup}"
@@ -8,6 +9,7 @@ version = "${pluginVersion}"
 
 repositories {
     mavenCentral()
+    gradlePluginPortal()
     maven {
         name = 'papermc'
         url = 'https://repo.papermc.io/repository/maven-public/'
@@ -23,7 +25,8 @@ repositories {
 }
 
 dependencies {  
-    compileOnly "io.papermc.paper:paper-api:${paperVersion}"
+    // compileOnly "io.papermc.paper:paper-api:${paperVersion}"
+    paperweight.paperDevBundle("${MinecraftVersion}-R0.1-SNAPSHOT")
 
     // Add PlaceholderAPI
     compileOnly "me.clip:placeholderapi:${placeholderApiVersion}"
@@ -32,6 +35,10 @@ dependencies {
     compileOnly("com.github.MilkBowl:VaultAPI:${vaultVersion}") {
         exclude group: 'org.bukkit', module: 'bukkit'
     }
+   
+    // Lomok    
+    compileOnly("org.projectlombok:lombok:${lombokVersion}")
+	  annotationProcessor("org.projectlombok:lombok:${lombokVersion}")
 
     // MariaDB JDBC Driver
     implementation "com.zaxxer:HikariCP:${hikariVersion}"
@@ -45,14 +52,16 @@ dependencies {
 
 
 shadowJar {
-    relocate 'com.zaxxer.hikari', 'com.spectrasonic.hikari'
-    relocate 'org.mariadb.jdbc', 'com.spectrasonic.mariadb'
-    // relocate("dev.jorel.commandapi", "com.spectrasonic.commandapi")
+    relocate "com.zaxxer.hikari", "${project.group}.hikari"
+    relocate "org.mariadb.jdbc", "${project.group}.mariadb"
+    // relocate("dev.jorel.commandapi", "${project.group}.commandapi")
     destinationDirectory = file("${rootDir}/out")
     archiveFileName = "${rootProject.name}-${version}.jar"
+
 }
 
 build.dependsOn shadowJar
+build.finalizedBy reobfJar
 
 def targetJavaVersion = 21
 java {
