@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 
 import java.util.Collection;
 
+@SuppressWarnings("unchecked")
 public class EconomyadminCommand {
 
     private final Main plugin;
