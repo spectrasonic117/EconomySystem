@@ -11,14 +11,9 @@ public class MessageManager {
 
     private final YamlConfiguration config;
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
-    private String prefix = "";
 
     public MessageManager(File file) throws IOException {
-        // Carga el YAML; si el archivo no existe se lanzará IOException
         this.config = YamlConfiguration.loadConfiguration(file);
-        if (config.contains("messages.prefix")) {
-            this.prefix = config.getString("messages.prefix");
-        }
     }
 
     public Component get(String key, Object... placeholders) {
@@ -29,11 +24,7 @@ public class MessageManager {
         String message = config.getString(fullKey);
         message = applyPlaceholders(message, placeholders);
 
-        // No añadir prefijo si el mensaje ya lo contiene o es el propio prefijo
-        if (key.equals("prefix") || message.startsWith("<green>[EconomySystem]</green>")) {
-            return miniMessage.deserialize(message);
-        }
-        return miniMessage.deserialize(prefix + " " + message);
+        return miniMessage.deserialize(message);
     }
 
     private String applyPlaceholders(String message, Object... placeholders) {
@@ -46,9 +37,5 @@ public class MessageManager {
             message = message.replace(placeholder, value);
         }
         return message;
-    }
-
-    public String getPrefix() {
-        return prefix;
     }
 }

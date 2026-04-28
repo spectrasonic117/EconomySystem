@@ -1,5 +1,4 @@
 messages:
-  prefix: "[EconomySystem]"
   plugin-enabled: "The plugin has been enabled!"
   plugin-disabled: "The plugin has been disabled!"
   player-not-player: "This command can only be run by a player."
