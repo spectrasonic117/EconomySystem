@@ -10,22 +10,6 @@ economy:
   # DECIMAL_PLACES: 0 = solo enteros (1,500), 2 = dos decimales (1,500.00)
   decimal-places: 0
 
-# Cache configuration
-# El caché reduce la carga en la base de datos manteniendo saldos en memoria
-cache:
-  enabled: true
-  # Intervalo en segundos entre flush automáticos a la base de datos
-  flush-interval: 5
-  # Número máximo de entradas a procesar por cada ráfaga (burst) de flush
-  max-batch-size: 50
-  # Tiempo en segundos antes de eliminar entradas inactivas de la caché (0 para desactivar)
-  eviction-time: 300
-  # --- Write-back agresivo ---
-  # Número máximo de ráfagas por ciclo de flush (mayor = más agresivo)
-  max-bursts-per-cycle: 10
-  # Pausa en milisegundos entre ráfagas para no saturar la DB (0 = sin pausa)
-  burst-delay-ms: 100
-
 # Database configuration
 # The database is used to store the player's balance.
 # TYPE: mariadb, litesql, url
@@ -41,3 +25,19 @@ database:
     file: "economy.db"
   url:
     jdbc: "jdbc:mariadb://user:password@localhost:3306/economy"
+
+# Cache configuration
+# El caché reduce la carga en la base de datos manteniendo saldos en memoria
+cache:
+  enabled: true
+  # Intervalo en segundos entre flush automáticos a la base de datos
+  flush-interval: 5
+  # Número máximo de entradas a procesar por cada ráfaga (burst) de flush
+  max-batch-size: 50
+  # Tiempo en segundos antes de eliminar entradas inactivas de la caché (0 para desactivar)
+  eviction-time: 300
+  # --- Write-back agresivo ---
+  # Número máximo de ráfagas por ciclo de flush (mayor = más agresivo)
+  max-bursts-per-cycle: 10
+  # Pausa en milisegundos entre ráfagas para no saturar la DB (0 = sin pausa)
+  burst-delay-ms: 100

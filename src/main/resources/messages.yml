@@ -12,7 +12,7 @@ messages:
   pay-success-receiver: "%player% has paid you %amount%!"
   top-list-title: "Top 10 richest players:"
   top-list-entry: "%position%. %player% - %balance%"
-  top-list-footer: ""
+  top-list-footer: " "
   balance-set-success: "You have set %player% balance to %amount%!"
   balance-add-success: "You have added %amount% to %player% balance!"
   remove-balance-success: "You have removed %amount% from %player% balance!"

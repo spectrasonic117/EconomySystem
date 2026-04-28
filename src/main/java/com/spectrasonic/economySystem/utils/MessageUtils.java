@@ -56,7 +56,7 @@ public final class MessageUtils {
 
     public static void configReloadedMessage(CommandSender sender) {
         sender.sendMessage(
-                miniMessage.deserialize(PREFIX + "<green><b>[✔️]</b> <#9e9893>Config Reloaded"));
+                miniMessage.deserialize(PREFIX + "<green><b>[✔]</b> <#9e9893>Config Reloaded"));
     }
 
     // Alert Messages
