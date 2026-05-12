@@ -69,7 +69,7 @@ public class EconomyadminCommand {
 
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
-            checkAccount(playerUuid);
+            ensureAccount(playerUuid);
             double balance = getBalance(playerUuid);
             MessageUtils.infoComponent(sender, plugin.getMessages().get("balance-message-other", "%player%",
                     player.getName(), "%balance%", String.valueOf(balance)));
@@ -92,7 +92,7 @@ public class EconomyadminCommand {
 
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
-            checkAccount(playerUuid);
+            ensureAccount(playerUuid);
             setBalance(playerUuid, amount);
             MessageUtils.successComponent(sender, plugin.getMessages().get("balance-set-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
@@ -115,7 +115,7 @@ public class EconomyadminCommand {
 
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
-            checkAccount(playerUuid);
+            ensureAccount(playerUuid);
             addBalance(playerUuid, amount);
             MessageUtils.successComponent(sender, plugin.getMessages().get("balance-add-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
@@ -138,7 +138,7 @@ public class EconomyadminCommand {
 
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
-            checkAccount(playerUuid);
+            ensureAccount(playerUuid);
             removeBalance(playerUuid, amount);
             MessageUtils.successComponent(sender, plugin.getMessages().get("remove-balance-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
@@ -154,16 +154,20 @@ public class EconomyadminCommand {
 
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
-            checkAccount(playerUuid);
+            ensureAccount(playerUuid);
             setBalance(playerUuid, 0);
             MessageUtils.successComponent(sender, plugin.getMessages().get("balance-set-success", "%player%",
                     player.getName(), "%amount%", "0"));
         }
     }
 
-    private void checkAccount(String playerUuid) {
-        if (!getCacheManager().accountExists(playerUuid)) {
-            getCacheManager().createAccount(playerUuid);
+    private void ensureAccount(String uuid) {
+        if (plugin.getCacheManager() != null) {
+            plugin.getCacheManager().ensureAccount(uuid);
+        } else {
+            if (!plugin.getDatabaseManager().accountExists(uuid)) {
+                plugin.getDatabaseManager().createAccount(uuid);
+            }
         }
     }
 
@@ -197,9 +201,5 @@ public class EconomyadminCommand {
         } else {
             plugin.getDatabaseManager().removeBalance(uuid, amount);
         }
-    }
-
-    private com.spectrasonic.economySystem.cache.CacheManager getCacheManager() {
-        return plugin.getCacheManager();
     }
 }

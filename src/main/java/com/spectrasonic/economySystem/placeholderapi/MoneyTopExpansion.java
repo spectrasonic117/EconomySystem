@@ -1,6 +1,7 @@
 package com.spectrasonic.economySystem.placeholderapi;
 
 import com.spectrasonic.economySystem.Main;
+import com.spectrasonic.economySystem.cache.CacheManager;
 import com.spectrasonic.economySystem.database.DatabaseManager;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.Bukkit;
@@ -44,40 +45,38 @@ public class MoneyTopExpansion extends PlaceholderExpansion {
 
     @Override
     public String onRequest(OfflinePlayer player, @NotNull String params) {
-        DatabaseManager dbManager = plugin.getDatabaseManager();
-
         // ─── Placeholders de Balance del Jugador Actual ───
 
         // %economysystem_balance% - Balance según configuración
         if (params.equals("balance")) {
-            return getFormattedBalance(player, dbManager);
+            return getFormattedBalance(player);
         }
 
         // %economysystem_balance_raw% - Balance sin formato
         if (params.equals("balance_raw")) {
-            return getRawBalance(player, dbManager);
+            return getRawBalance(player);
         }
 
         // %economysystem_balance_int% - Balance como entero
         if (params.equals("balance_int")) {
-            return getIntegerBalance(player, dbManager);
+            return getIntegerBalance(player);
         }
 
         // %economysystem_balance_decimals% - Balance con 2 decimales
         if (params.equals("balance_decimals")) {
-            return getDecimalsBalance(player, dbManager);
+            return getDecimalsBalance(player);
         }
 
         // %economysystem_balance_symbol% - Balance con símbolo de moneda
         if (params.equals("balance_symbol")) {
-            return getBalanceWithSymbol(player, dbManager);
+            return getBalanceWithSymbol(player);
         }
 
         // ─── Placeholders de Balance de Otro Jugador ───
 
         // Formato: balance_other_{nombre} o balance_other_{nombre}_{formato}
         if (params.startsWith("balance_other_")) {
-            return handleOtherPlayerBalance(params, dbManager);
+            return handleOtherPlayerBalance(params);
         }
 
         // ─── Placeholders de Leaderboard ───
@@ -106,38 +105,28 @@ public class MoneyTopExpansion extends PlaceholderExpansion {
     // Métodos de Balance del Jugador Actual
     // ═══════════════════════════════════════════════════════════════
 
-    private String getFormattedBalance(OfflinePlayer player, DatabaseManager dbManager) {
-        String uuid = player.getUniqueId().toString();
-        ensureAccountExists(uuid, dbManager);
-        double balance = dbManager.getBalance(uuid);
+    private String getFormattedBalance(OfflinePlayer player) {
+        double balance = getBalance(player.getUniqueId().toString());
         return plugin.formatBalance(balance);
     }
 
-    private String getRawBalance(OfflinePlayer player, DatabaseManager dbManager) {
-        String uuid = player.getUniqueId().toString();
-        ensureAccountExists(uuid, dbManager);
-        double balance = dbManager.getBalance(uuid);
+    private String getRawBalance(OfflinePlayer player) {
+        double balance = getBalance(player.getUniqueId().toString());
         return plugin.formatBalanceRaw(balance);
     }
 
-    private String getIntegerBalance(OfflinePlayer player, DatabaseManager dbManager) {
-        String uuid = player.getUniqueId().toString();
-        ensureAccountExists(uuid, dbManager);
-        double balance = dbManager.getBalance(uuid);
+    private String getIntegerBalance(OfflinePlayer player) {
+        double balance = getBalance(player.getUniqueId().toString());
         return plugin.formatBalanceInteger(balance);
     }
 
-    private String getDecimalsBalance(OfflinePlayer player, DatabaseManager dbManager) {
-        String uuid = player.getUniqueId().toString();
-        ensureAccountExists(uuid, dbManager);
-        double balance = dbManager.getBalance(uuid);
+    private String getDecimalsBalance(OfflinePlayer player) {
+        double balance = getBalance(player.getUniqueId().toString());
         return plugin.formatBalanceDecimals(balance);
     }
 
-    private String getBalanceWithSymbol(OfflinePlayer player, DatabaseManager dbManager) {
-        String uuid = player.getUniqueId().toString();
-        ensureAccountExists(uuid, dbManager);
-        double balance = dbManager.getBalance(uuid);
+    private String getBalanceWithSymbol(OfflinePlayer player) {
+        double balance = getBalance(player.getUniqueId().toString());
         return plugin.formatBalanceWithSymbol(balance);
     }
 
@@ -145,7 +134,7 @@ public class MoneyTopExpansion extends PlaceholderExpansion {
     // Métodos de Balance de Otro Jugador
     // ═══════════════════════════════════════════════════════════════
 
-    private String handleOtherPlayerBalance(String params, DatabaseManager dbManager) {
+    private String handleOtherPlayerBalance(String params) {
         // Formato esperado: balance_other_{nombre} o balance_other_{nombre}_{formato}
         String[] parts = params.split("_");
 
@@ -161,8 +150,7 @@ public class MoneyTopExpansion extends PlaceholderExpansion {
         }
 
         String uuid = target.getUniqueId().toString();
-        ensureAccountExists(uuid, dbManager);
-        double balance = dbManager.getBalance(uuid);
+        double balance = getBalance(uuid);
 
         // Verificar si hay un formato específico
         if (parts.length >= 4) {
@@ -201,7 +189,7 @@ public class MoneyTopExpansion extends PlaceholderExpansion {
         String type = parts[2]; // "name" o "value"
 
         // Obtener Top 10
-        LinkedHashMap<String, Double> top = plugin.getDatabaseManager().getTopBalances(10);
+        LinkedHashMap<String, Double> top = getTopBalances(10);
         List<Map.Entry<String, Double>> list = new ArrayList<>(top.entrySet());
 
         if (pos < 0 || pos >= list.size()) {
@@ -237,12 +225,24 @@ public class MoneyTopExpansion extends PlaceholderExpansion {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // Utilidades
+    // Utilidades — Cache-aware
     // ═══════════════════════════════════════════════════════════════
 
-    private void ensureAccountExists(String uuid, DatabaseManager dbManager) {
-        if (!dbManager.accountExists(uuid)) {
-            dbManager.createAccount(uuid);
+    private boolean hasCache() {
+        return plugin.getCacheManager() != null;
+    }
+
+    private double getBalance(String uuid) {
+        if (hasCache()) {
+            return plugin.getCacheManager().getBalance(uuid);
         }
+        return plugin.getDatabaseManager().getBalance(uuid);
+    }
+
+    private LinkedHashMap<String, Double> getTopBalances(int limit) {
+        if (hasCache()) {
+            return plugin.getCacheManager().getTopBalances(limit);
+        }
+        return plugin.getDatabaseManager().getTopBalances(limit);
     }
 }

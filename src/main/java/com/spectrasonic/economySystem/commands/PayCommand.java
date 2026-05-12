@@ -52,8 +52,8 @@ public class PayCommand {
         String playerUuid = player.getUniqueId().toString();
         String targetUuid = target.getUniqueId().toString();
 
-        checkAccount(playerUuid);
-        checkAccount(targetUuid);
+        ensureAccount(playerUuid);
+        ensureAccount(targetUuid);
 
         double playerBalance = getBalance(playerUuid);
 
@@ -64,15 +64,20 @@ public class PayCommand {
 
         removeBalance(playerUuid, amount);
         addBalance(targetUuid, amount);
-        getCacheManager().createTransaction(playerUuid, targetUuid, amount);
+
+        recordTransactionAsync(playerUuid, targetUuid, amount);
 
         MessageUtils.successComponent(player, plugin.getMessages().get("pay-success-sender", "%player%", target.getName(), "%amount%", String.valueOf(amount)));
         MessageUtils.successComponent(target, plugin.getMessages().get("pay-success-receiver", "%player%", player.getName(), "%amount%", String.valueOf(amount)));
     }
 
-    private void checkAccount(String uuid) {
-        if (!getCacheManager().accountExists(uuid)) {
-            getCacheManager().createAccount(uuid);
+    private void ensureAccount(String uuid) {
+        if (plugin.getCacheManager() != null) {
+            plugin.getCacheManager().ensureAccount(uuid);
+        } else {
+            if (!plugin.getDatabaseManager().accountExists(uuid)) {
+                plugin.getDatabaseManager().createAccount(uuid);
+            }
         }
     }
 
@@ -100,7 +105,13 @@ public class PayCommand {
         }
     }
 
-    private com.spectrasonic.economySystem.cache.CacheManager getCacheManager() {
-        return plugin.getCacheManager();
+    private void recordTransactionAsync(String from, String to, double amount) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            if (plugin.getCacheManager() != null) {
+                plugin.getCacheManager().createTransaction(from, to, amount);
+            } else {
+                plugin.getDatabaseManager().createTransaction(from, to, amount);
+            }
+        });
     }
 }

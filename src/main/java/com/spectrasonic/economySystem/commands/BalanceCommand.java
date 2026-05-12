@@ -28,7 +28,6 @@ public class BalanceCommand {
 
     private void handleBalanceSelf(Player player, CommandArguments args) {
         String uuid = player.getUniqueId().toString();
-        checkAccount(uuid);
         double balance = getBalance(uuid);
         MessageUtils.infoComponent(player, plugin.getMessages().get("balance-message-own", "%balance%", String.valueOf(balance)));
     }
@@ -48,15 +47,8 @@ public class BalanceCommand {
         }
 
         String targetUuid = target.getUniqueId().toString();
-        checkAccount(targetUuid);
         double balance = getBalance(targetUuid);
         MessageUtils.infoComponent(player, plugin.getMessages().get("balance-message-other", "%player%", target.getName(), "%balance%", String.valueOf(balance)));
-    }
-
-    private void checkAccount(String uuid) {
-        if (!getCacheManager().accountExists(uuid)) {
-            getCacheManager().createAccount(uuid);
-        }
     }
 
     private double getBalance(String uuid) {
@@ -65,9 +57,5 @@ public class BalanceCommand {
         }
 
         return plugin.getDatabaseManager().getBalance(uuid);
-    }
-
-    private com.spectrasonic.economySystem.cache.CacheManager getCacheManager() {
-        return plugin.getCacheManager();
     }
 }

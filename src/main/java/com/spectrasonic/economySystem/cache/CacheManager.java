@@ -45,42 +45,52 @@ public class CacheManager {
     }
 
     public void setBalance(String uuid, double balance) {
-        CacheEntry entry = cache.computeIfAbsent(uuid, k -> {
-            double loadedBalance = databaseManager.getBalance(uuid);
-            return new CacheEntry(uuid, loadedBalance);
-        });
-
-        entry.setBalance(balance);
+        CacheEntry entry = cache.get(uuid);
+        if (entry != null) {
+            entry.setBalance(balance);
+        } else {
+            entry = new CacheEntry(uuid, balance);
+            cache.put(uuid, entry);
+        }
         markDirty(uuid);
     }
 
     public void addBalance(String uuid, double amount) {
-        CacheEntry entry = cache.computeIfAbsent(uuid, k -> {
+        CacheEntry entry = cache.get(uuid);
+        if (entry != null) {
+            entry.addBalance(amount);
+        } else {
             double loadedBalance = databaseManager.getBalance(uuid);
-            return new CacheEntry(uuid, loadedBalance);
-        });
-
-        entry.addBalance(amount);
+            entry = new CacheEntry(uuid, loadedBalance);
+            entry.addBalance(amount);
+            cache.put(uuid, entry);
+        }
         markDirty(uuid);
     }
 
     public void removeBalance(String uuid, double amount) {
-        CacheEntry entry = cache.computeIfAbsent(uuid, k -> {
+        CacheEntry entry = cache.get(uuid);
+        if (entry != null) {
+            entry.removeBalance(amount);
+        } else {
             double loadedBalance = databaseManager.getBalance(uuid);
-            return new CacheEntry(uuid, loadedBalance);
-        });
-
-        entry.removeBalance(amount);
+            entry = new CacheEntry(uuid, loadedBalance);
+            entry.removeBalance(amount);
+            cache.put(uuid, entry);
+        }
         markDirty(uuid);
     }
 
-    public void createAccount(String uuid) {
-        if (!databaseManager.accountExists(uuid)) {
-            databaseManager.createAccount(uuid);
-        }
+    public void ensureAccount(String uuid) {
+        if (cache.containsKey(uuid)) return;
+        databaseManager.createAccount(uuid);
+        loadFromDatabase(uuid);
+    }
 
-        CacheEntry entry = new CacheEntry(uuid, databaseManager.getBalance(uuid));
-        cache.put(uuid, entry);
+    public void createAccount(String uuid) {
+        if (cache.containsKey(uuid)) return;
+        databaseManager.createAccount(uuid);
+        loadFromDatabase(uuid);
     }
 
     public boolean accountExists(String uuid) {
@@ -101,8 +111,6 @@ public class CacheManager {
     }
 
     public LinkedHashMap<String, Double> getTopBalances(int limit) {
-        flushAllSync();
-
         LinkedHashMap<String, Double> topBalances = databaseManager.getTopBalances(limit);
 
         for (Map.Entry<String, Double> entry : topBalances.entrySet()) {

@@ -9,6 +9,9 @@ import dev.jorel.commandapi.executors.CommandArguments;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.LinkedHashMap;
+import java.util.UUID;
+
 public class BalancetopCommand {
 
     private final Main plugin;
@@ -28,22 +31,30 @@ public class BalancetopCommand {
     }
 
     private void handleBalanceTop(CommandSender sender, CommandArguments args) {
-        var topBalances = getTopBalances(10);
-        plugin.getLogger().info("BalanceTop: Found " + topBalances.size() + " players");
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            var topBalances = getTopBalances(10);
+            plugin.getLogger().info("BalanceTop: Found " + topBalances.size() + " players");
 
-        sendTopList(sender, topBalances);
+            plugin.getServer().getScheduler().runTask(plugin, () ->
+                sendTopList(sender, topBalances)
+            );
+        });
     }
 
     private void handleBalanceTopAll(CommandSender sender, CommandArguments args) {
-        var topBalances = getTopBalances(10);
-        plugin.getLogger().info("BalanceTop: Found " + topBalances.size() + " players");
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            var topBalances = getTopBalances(10);
+            plugin.getLogger().info("BalanceTop: Found " + topBalances.size() + " players");
 
-        for (Player player : plugin.getServer().getOnlinePlayers()) {
-            sendTopList(player, topBalances);
-        }
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                for (Player player : plugin.getServer().getOnlinePlayers()) {
+                    sendTopList(player, topBalances);
+                }
+            });
+        });
     }
 
-    private java.util.LinkedHashMap<String, Double> getTopBalances(int limit) {
+    private LinkedHashMap<String, Double> getTopBalances(int limit) {
         if (plugin.getCacheManager() != null) {
             return plugin.getCacheManager().getTopBalances(limit);
         }
@@ -60,7 +71,7 @@ public class BalancetopCommand {
             for (var entry : topBalances.entrySet()) {
                 String uuid = entry.getKey();
                 double balance = entry.getValue();
-                String playerName = plugin.getServer().getOfflinePlayer(java.util.UUID.fromString(uuid)).getName();
+                String playerName = plugin.getServer().getOfflinePlayer(UUID.fromString(uuid)).getName();
 
                 MessageUtils.rawComponent(sender, plugin.getMessages().get("top-list-entry",
                         "%position%", String.valueOf(i++),
