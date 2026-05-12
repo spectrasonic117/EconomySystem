@@ -10,7 +10,6 @@ import java.sql.*;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 
-@SuppressWarnings("unused")
 public class LiteSQLManager implements DatabaseManager {
 
     private final Main plugin;
@@ -66,10 +65,13 @@ public class LiteSQLManager implements DatabaseManager {
                 "amount DOUBLE, " +
                 "created_at TEXT DEFAULT CURRENT_TIMESTAMP);";
 
+        String balanceIndex = "CREATE INDEX IF NOT EXISTS idx_economy_balance ON economy (balance);";
+
         try (Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(createEconomyTable);
             stmt.executeUpdate(createTransactionsTable);
-            plugin.getLogger().info("Tables created or already exist.");
+            stmt.executeUpdate(balanceIndex);
+            plugin.getLogger().info("Tables checked/created with balance index.");
         } catch (SQLException e) {
             e.printStackTrace();
             plugin.getLogger().severe("Error creating tables in LiteSQL!");
@@ -79,12 +81,14 @@ public class LiteSQLManager implements DatabaseManager {
     public void createAccount(String uuid) {
         double startBalance = plugin.getConfig().getDouble("economy.start-balance");
         try (PreparedStatement ps = connection.prepareStatement(
-                "INSERT INTO economy (uuid, balance) VALUES (?, ?)")) {
+                "INSERT OR IGNORE INTO economy (uuid, balance) VALUES (?, ?)")) {
             ps.setString(1, uuid);
             ps.setDouble(2, startBalance);
-            ps.executeUpdate();
-            plugin.getLogger().info("Account created for " + uuid + " with balance " + startBalance);
-            createTransaction("SERVER", uuid, startBalance);
+            int rowsAffected = ps.executeUpdate();
+            if (rowsAffected > 0) {
+                plugin.getLogger().info("Account created for " + uuid + " with balance " + startBalance);
+                createTransaction("SERVER", uuid, startBalance);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
             plugin.getLogger().severe("Error creating account for " + uuid);
@@ -173,15 +177,8 @@ public class LiteSQLManager implements DatabaseManager {
         LinkedHashMap<String, Double> topBalances = new LinkedHashMap<>();
         try (Statement stmt = connection.createStatement()) {
             ResultSet resultSet = stmt
-                    .executeQuery("SELECT uuid, balance FROM economy ORDER BY balance DESC LIMIT " + limit * 2);
+                    .executeQuery("SELECT uuid, balance FROM economy ORDER BY balance DESC LIMIT " + limit);
             while (resultSet.next()) {
-
-                UUID uuid = UUID.fromString(resultSet.getString("uuid"));
-                // Check if already Limit
-                if (topBalances.size() >= limit) {
-                    break;
-                }
-
                 topBalances.put(resultSet.getString("uuid"), resultSet.getDouble("balance"));
             }
         } catch (SQLException e) {
@@ -193,7 +190,8 @@ public class LiteSQLManager implements DatabaseManager {
 
     @Override
     public void batchUpdateBalance(Map<String, Double> entries) {
-        if (entries == null || entries.isEmpty()) return;
+        if (entries == null || entries.isEmpty())
+            return;
 
         writeLock.lock();
         try {
@@ -213,8 +211,7 @@ public class LiteSQLManager implements DatabaseManager {
                     BalanceChangeEvent evt = new BalanceChangeEvent(
                             Bukkit.getPlayer(UUID.fromString(entry.getKey())),
                             entry.getValue(),
-                            !Bukkit.isPrimaryThread()
-                    );
+                            !Bukkit.isPrimaryThread());
                     Bukkit.getPluginManager().callEvent(evt);
                 } catch (IllegalArgumentException ignored) {
                 }

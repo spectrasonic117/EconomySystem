@@ -79,13 +79,16 @@ public abstract class AbstractHikariManager implements DatabaseManager {
                 );
                 """;
 
+        String balanceIndex = "CREATE INDEX IF NOT EXISTS idx_economy_balance ON economy (balance);";
+
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
 
             stmt.executeUpdate(economyTable);
             stmt.executeUpdate(transactionTable);
+            stmt.executeUpdate(balanceIndex);
 
-            plugin.getLogger().info("Tables checked/created.");
+            plugin.getLogger().info("Tables checked/created with balance index.");
 
         } catch (SQLException e) {
             plugin.getLogger().severe("Error creating tables: " + e.getMessage());

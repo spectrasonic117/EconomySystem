@@ -40,10 +40,6 @@ public final class Main extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (loadManager != null) {
-            loadManager.shutdown();
-        }
-
         if (configManager.getFlushScheduler() != null) {
             configManager.getFlushScheduler().stop();
         }
@@ -52,6 +48,10 @@ public final class Main extends JavaPlugin {
             getLogger().info("Flushing cache before shutdown...");
             configManager.getCacheManager().flushAllSync();
             getLogger().info("Cache flushed successfully.");
+        }
+
+        if (loadManager != null) {
+            loadManager.shutdown();
         }
 
         MessageUtils.sendShutdownMessage(this);

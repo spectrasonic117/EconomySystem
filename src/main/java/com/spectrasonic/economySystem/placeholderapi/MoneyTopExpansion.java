@@ -1,8 +1,6 @@
 package com.spectrasonic.economySystem.placeholderapi;
 
 import com.spectrasonic.economySystem.Main;
-import com.spectrasonic.economySystem.cache.CacheManager;
-import com.spectrasonic.economySystem.database.DatabaseManager;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
