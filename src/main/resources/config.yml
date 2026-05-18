@@ -15,6 +15,10 @@ economy:
 # TYPE: mariadb, litesql, url
 database:
   type: litesql
+  # Identificador del servidor para multi-servidor
+  server-id: "server-1"
+  # Días de retención de transacciones (0 = sin límite)
+  transaction-retention: 30
   mariadb:
     host: "localhost"
     port: 3306

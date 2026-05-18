@@ -92,8 +92,13 @@ public class EconomyadminCommand {
 
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
+            String senderUuid = "CONSOLE";
+            if (sender instanceof Player senderPlayer) {
+                senderUuid = senderPlayer.getUniqueId().toString();
+            }
             ensureAccount(playerUuid);
             setBalance(playerUuid, amount);
+            recordTransactionAsync(senderUuid, playerUuid, amount, "ADMIN_SET");
             MessageUtils.successComponent(sender, plugin.getMessages().get("balance-set-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
         }
@@ -115,8 +120,13 @@ public class EconomyadminCommand {
 
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
+            String senderUuid = "CONSOLE";
+            if (sender instanceof Player senderPlayer) {
+                senderUuid = senderPlayer.getUniqueId().toString();
+            }
             ensureAccount(playerUuid);
             addBalance(playerUuid, amount);
+            recordTransactionAsync(senderUuid, playerUuid, amount, "ADMIN_GIVE");
             MessageUtils.successComponent(sender, plugin.getMessages().get("balance-add-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
         }
@@ -138,8 +148,13 @@ public class EconomyadminCommand {
 
         for (Player player : players) {
             String playerUuid = player.getUniqueId().toString();
+            String senderUuid = "CONSOLE";
+            if (sender instanceof Player senderPlayer) {
+                senderUuid = senderPlayer.getUniqueId().toString();
+            }
             ensureAccount(playerUuid);
             removeBalance(playerUuid, amount);
+            recordTransactionAsync(playerUuid, senderUuid, amount, "ADMIN_TAKE");
             MessageUtils.successComponent(sender, plugin.getMessages().get("remove-balance-success", "%player%",
                     player.getName(), "%amount%", String.valueOf(amount)));
         }
@@ -201,5 +216,15 @@ public class EconomyadminCommand {
         } else {
             plugin.getDatabaseManager().removeBalance(uuid, amount);
         }
+    }
+
+    private void recordTransactionAsync(String from, String to, double amount, String transactionType) {
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            if (plugin.getCacheManager() != null) {
+                plugin.getCacheManager().createTransaction(from, to, amount, transactionType);
+            } else {
+                plugin.getDatabaseManager().createTransaction(from, to, amount, transactionType);
+            }
+        });
     }
 }

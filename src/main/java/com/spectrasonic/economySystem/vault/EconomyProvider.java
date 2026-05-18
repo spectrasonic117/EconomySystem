@@ -90,10 +90,10 @@ public class EconomyProvider extends AbstractEconomy {
 
         if (hasCache()) {
             cache().removeBalance(uuid, amount);
-            cache().createTransaction(uuid, "VAULT", amount);
+            cache().createTransaction(uuid, "VAULT", amount, "VAULT");
         } else {
             db().removeBalance(uuid, amount);
-            db().createTransaction(uuid, "VAULT", amount);
+            db().createTransaction(uuid, "VAULT", amount, "VAULT");
         }
 
         double newBalance = getBalance(playerName);
@@ -110,10 +110,10 @@ public class EconomyProvider extends AbstractEconomy {
 
         if (hasCache()) {
             cache().addBalance(uuid, amount);
-            cache().createTransaction("VAULT", uuid, amount);
+            cache().createTransaction("VAULT", uuid, amount, "VAULT");
         } else {
             db().addBalance(uuid, amount);
-            db().createTransaction("VAULT", uuid, amount);
+            db().createTransaction("VAULT", uuid, amount, "VAULT");
         }
 
         double newBalance = getBalance(playerName);

@@ -20,9 +20,15 @@ public interface DatabaseManager {
 
     void removeBalance(String uuid, double amount);
 
-    void createTransaction(String uuidFrom, String uuidTo, double amount);
+    void createTransaction(String uuidFrom, String uuidTo, double amount, String transactionType);
+
+    boolean transferBalance(String from, String to, double amount);
 
     LinkedHashMap<String, Double> getTopBalances(int limit);
 
     void batchUpdateBalance(Map<String, Double> entries);
+
+    int purgeTransactions(long beforeDate);
+
+    void setServerId(String serverId);
 }

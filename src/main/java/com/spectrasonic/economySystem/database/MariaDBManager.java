@@ -1,6 +1,7 @@
 package com.spectrasonic.economySystem.database;
 
 import com.spectrasonic.economySystem.Main;
+
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 
@@ -33,10 +34,6 @@ public class MariaDBManager extends AbstractHikariManager {
         return plugin.getConfig().getString("database.mariadb.password", "");
     }
 
-    // -----------------------------------
-    // Async wrappers (kept for compatibility if needed)
-    // -----------------------------------
-
     public CompletableFuture<Void> createAccountAsync(String uuid) {
         return CompletableFuture.runAsync(() -> createAccount(uuid), dbExecutor);
     }
@@ -53,11 +50,19 @@ public class MariaDBManager extends AbstractHikariManager {
         return CompletableFuture.runAsync(() -> setBalance(uuid, balance), dbExecutor);
     }
 
-    public CompletableFuture<Void> createTransactionAsync(String f, String t, double a) {
-        return CompletableFuture.runAsync(() -> createTransaction(f, t, a), dbExecutor);
+    public CompletableFuture<Void> createTransactionAsync(String f, String t, double a, String transactionType) {
+        return CompletableFuture.runAsync(() -> createTransaction(f, t, a, transactionType), dbExecutor);
+    }
+
+    public CompletableFuture<Boolean> transferBalanceAsync(String from, String to, double amount) {
+        return CompletableFuture.supplyAsync(() -> transferBalance(from, to, amount), dbExecutor);
     }
 
     public CompletableFuture<HashMap<String, Double>> getTopBalancesAsync(int limit) {
-        return CompletableFuture.supplyAsync(() -> getTopBalances(limit), dbExecutor);
+        return CompletableFuture.supplyAsync(() -> new HashMap<>(getTopBalances(limit)), dbExecutor);
+    }
+
+    public CompletableFuture<Integer> purgeTransactionsAsync(long beforeDate) {
+        return CompletableFuture.supplyAsync(() -> purgeTransactions(beforeDate), dbExecutor);
     }
 }

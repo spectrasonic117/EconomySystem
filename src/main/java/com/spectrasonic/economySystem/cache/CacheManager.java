@@ -19,6 +19,8 @@ public class CacheManager {
     private final ConcurrentLinkedQueue<String> dirtyQueue = new ConcurrentLinkedQueue<>();
     private final Set<String> queuedKeys = ConcurrentHashMap.newKeySet();
 
+    private final Object transferLock = new Object();
+
     public CacheManager(Main plugin, DatabaseManager databaseManager) {
         this.plugin = plugin;
         this.databaseManager = databaseManager;
@@ -81,6 +83,29 @@ public class CacheManager {
         markDirty(uuid);
     }
 
+    public boolean transferBalance(String from, String to, double amount) {
+        synchronized (transferLock) {
+            CacheEntry fromEntry = cache.computeIfAbsent(from, k -> new CacheEntry(k, databaseManager.getBalance(k)));
+            CacheEntry toEntry = cache.computeIfAbsent(to, k -> new CacheEntry(k, databaseManager.getBalance(k)));
+
+            if (fromEntry.getBalance() < amount) {
+                return false;
+            }
+
+            fromEntry.setBalance(fromEntry.getBalance() - amount);
+            toEntry.setBalance(toEntry.getBalance() + amount);
+
+            markDirty(from);
+            markDirty(to);
+
+            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
+                    databaseManager.createTransaction(from, to, amount, "PAY")
+            );
+
+            return true;
+        }
+    }
+
     public void ensureAccount(String uuid) {
         if (cache.containsKey(uuid)) return;
         databaseManager.createAccount(uuid);
@@ -106,8 +131,8 @@ public class CacheManager {
         return exists;
     }
 
-    public void createTransaction(String uuidFrom, String uuidTo, double amount) {
-        databaseManager.createTransaction(uuidFrom, uuidTo, amount);
+    public void createTransaction(String uuidFrom, String uuidTo, double amount, String transactionType) {
+        databaseManager.createTransaction(uuidFrom, uuidTo, amount, transactionType);
     }
 
     public LinkedHashMap<String, Double> getTopBalances(int limit) {
@@ -125,6 +150,10 @@ public class CacheManager {
         }
 
         return topBalances;
+    }
+
+    public int purgeTransactions(long beforeDate) {
+        return databaseManager.purgeTransactions(beforeDate);
     }
 
     public Map<String, CacheEntry> getDirtyEntries() {

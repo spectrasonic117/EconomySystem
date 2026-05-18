@@ -10,3 +10,5 @@ out/
 .vscode/
 
 .openclaude-profile.json
+
+.commandcode/

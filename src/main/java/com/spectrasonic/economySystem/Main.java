@@ -40,6 +40,10 @@ public final class Main extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (configManager.getTransactionPurger() != null) {
+            configManager.getTransactionPurger().stop();
+        }
+
         if (configManager.getFlushScheduler() != null) {
             configManager.getFlushScheduler().stop();
         }

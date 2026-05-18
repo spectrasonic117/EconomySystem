@@ -16,6 +16,7 @@ public abstract class AbstractHikariManager implements DatabaseManager {
     protected final Main plugin;
     protected HikariDataSource dataSource;
     protected final ExecutorService dbExecutor = Executors.newFixedThreadPool(4);
+    protected String serverId = "unknown";
 
     public AbstractHikariManager(Main plugin) {
         this.plugin = plugin;
@@ -25,6 +26,11 @@ public abstract class AbstractHikariManager implements DatabaseManager {
     protected abstract String getDriverClassName();
     protected abstract String getUsername();
     protected abstract String getPassword();
+
+    @Override
+    public void setServerId(String serverId) {
+        this.serverId = serverId;
+    }
 
     @Override
     public void connect() {
@@ -66,16 +72,8 @@ public abstract class AbstractHikariManager implements DatabaseManager {
                 CREATE TABLE IF NOT EXISTS economy (
                     uuid VARCHAR(36) PRIMARY KEY,
                     balance DOUBLE DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-                """;
-
-        String transactionTable = """
-                CREATE TABLE IF NOT EXISTS economy_transactions (
-                    uuid_from VARCHAR(36),
-                    uuid_to VARCHAR(36),
-                    amount DOUBLE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 );
                 """;
 
@@ -85,7 +83,6 @@ public abstract class AbstractHikariManager implements DatabaseManager {
              Statement stmt = conn.createStatement()) {
 
             stmt.executeUpdate(economyTable);
-            stmt.executeUpdate(transactionTable);
             stmt.executeUpdate(balanceIndex);
 
             plugin.getLogger().info("Tables checked/created with balance index.");
@@ -94,6 +91,8 @@ public abstract class AbstractHikariManager implements DatabaseManager {
             plugin.getLogger().severe("Error creating tables: " + e.getMessage());
             e.printStackTrace();
         }
+
+        new MigrationManager(plugin, this).run();
     }
 
     @Override
@@ -109,7 +108,7 @@ public abstract class AbstractHikariManager implements DatabaseManager {
             int rowsAffected = ps.executeUpdate();
 
             if (rowsAffected > 0) {
-                createTransaction("SERVER", uuid, startBalance);
+                createTransaction("SERVER", uuid, startBalance, "SERVER");
             }
 
         } catch (SQLException e) {
@@ -160,7 +159,7 @@ public abstract class AbstractHikariManager implements DatabaseManager {
     public void setBalance(String uuid, double balance) {
         if (balance < 0) balance = 0;
 
-        String sql = "UPDATE economy SET balance = ? WHERE uuid = ?";
+        String sql = "UPDATE economy SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -182,20 +181,35 @@ public abstract class AbstractHikariManager implements DatabaseManager {
 
     @Override
     public void addBalance(String uuid, double amount) {
-        double current = getBalance(uuid);
-        setBalance(uuid, current + amount);
+        String sql = "UPDATE economy SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, amount);
+            ps.setString(2, uuid);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Error adding balance for " + uuid);
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void removeBalance(String uuid, double amount) {
-        double current = getBalance(uuid);
-        amount = Math.min(amount, current);
-        setBalance(uuid, current - amount);
+        String sql = "UPDATE economy SET balance = GREATEST(0, balance - ?), updated_at = CURRENT_TIMESTAMP WHERE uuid = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, amount);
+            ps.setString(2, uuid);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Error removing balance for " + uuid);
+            e.printStackTrace();
+        }
     }
 
     @Override
-    public void createTransaction(String from, String to, double amount) {
-        String sql = "INSERT INTO economy_transactions (uuid_from, uuid_to, amount) VALUES (?, ?, ?)";
+    public void createTransaction(String from, String to, double amount, String transactionType) {
+        String sql = "INSERT INTO economy_transactions (uuid_from, uuid_to, amount, transaction_type, server_id) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -203,6 +217,8 @@ public abstract class AbstractHikariManager implements DatabaseManager {
             ps.setString(1, from);
             ps.setString(2, to);
             ps.setDouble(3, amount);
+            ps.setString(4, transactionType);
+            ps.setString(5, serverId);
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -212,16 +228,64 @@ public abstract class AbstractHikariManager implements DatabaseManager {
     }
 
     @Override
+    public boolean transferBalance(String from, String to, double amount) {
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                String deduct = "UPDATE economy SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE uuid = ? AND balance >= ?";
+                try (PreparedStatement ps = conn.prepareStatement(deduct)) {
+                    ps.setDouble(1, amount);
+                    ps.setString(2, from);
+                    ps.setDouble(3, amount);
+                    if (ps.executeUpdate() == 0) {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+
+                String credit = "UPDATE economy SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?";
+                try (PreparedStatement ps = conn.prepareStatement(credit)) {
+                    ps.setDouble(1, amount);
+                    ps.setString(2, to);
+                    ps.executeUpdate();
+                }
+
+                String insertTx = "INSERT INTO economy_transactions (uuid_from, uuid_to, amount, transaction_type, server_id) VALUES (?, ?, ?, 'PAY', ?)";
+                try (PreparedStatement ps = conn.prepareStatement(insertTx)) {
+                    ps.setString(1, from);
+                    ps.setString(2, to);
+                    ps.setDouble(3, amount);
+                    ps.setString(4, serverId);
+                    ps.executeUpdate();
+                }
+
+                conn.commit();
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Error transferring balance: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
     public LinkedHashMap<String, Double> getTopBalances(int limit) {
         LinkedHashMap<String, Double> map = new LinkedHashMap<>();
-        String sql = "SELECT uuid, balance FROM economy ORDER BY balance DESC LIMIT " + limit;
+        String sql = "SELECT uuid, balance FROM economy ORDER BY balance DESC LIMIT ?";
 
         try (Connection conn = getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                map.put(rs.getString("uuid"), rs.getDouble("balance"));
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    map.put(rs.getString("uuid"), rs.getDouble("balance"));
+                }
             }
 
         } catch (SQLException e) {
@@ -236,7 +300,7 @@ public abstract class AbstractHikariManager implements DatabaseManager {
     public void batchUpdateBalance(Map<String, Double> entries) {
         if (entries == null || entries.isEmpty()) return;
 
-        String sql = "UPDATE economy SET balance = ? WHERE uuid = ?";
+        String sql = "UPDATE economy SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE uuid = ?";
 
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
@@ -271,6 +335,19 @@ public abstract class AbstractHikariManager implements DatabaseManager {
         } catch (SQLException e) {
             plugin.getLogger().severe("Error in batch balance update: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    public int purgeTransactions(long beforeDate) {
+        String sql = "DELETE FROM economy_transactions WHERE created_at < ?";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setTimestamp(1, new Timestamp(beforeDate));
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Error purging transactions: " + e.getMessage());
+            return 0;
         }
     }
 

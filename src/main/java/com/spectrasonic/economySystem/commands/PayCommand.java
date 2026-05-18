@@ -55,17 +55,17 @@ public class PayCommand {
         ensureAccount(playerUuid);
         ensureAccount(targetUuid);
 
-        double playerBalance = getBalance(playerUuid);
+        boolean success;
+        if (plugin.getCacheManager() != null) {
+            success = plugin.getCacheManager().transferBalance(playerUuid, targetUuid, amount);
+        } else {
+            success = plugin.getDatabaseManager().transferBalance(playerUuid, targetUuid, amount);
+        }
 
-        if (playerBalance < amount) {
+        if (!success) {
             MessageUtils.denyComponent(player, plugin.getMessages().get("not-enough-money"));
             return;
         }
-
-        removeBalance(playerUuid, amount);
-        addBalance(targetUuid, amount);
-
-        recordTransactionAsync(playerUuid, targetUuid, amount);
 
         MessageUtils.successComponent(player, plugin.getMessages().get("pay-success-sender", "%player%", target.getName(), "%amount%", String.valueOf(amount)));
         MessageUtils.successComponent(target, plugin.getMessages().get("pay-success-receiver", "%player%", player.getName(), "%amount%", String.valueOf(amount)));
@@ -79,39 +79,5 @@ public class PayCommand {
                 plugin.getDatabaseManager().createAccount(uuid);
             }
         }
-    }
-
-    private double getBalance(String uuid) {
-        if (plugin.getCacheManager() != null) {
-            return plugin.getCacheManager().getBalance(uuid);
-        }
-
-        return plugin.getDatabaseManager().getBalance(uuid);
-    }
-
-    private void addBalance(String uuid, double amount) {
-        if (plugin.getCacheManager() != null) {
-            plugin.getCacheManager().addBalance(uuid, amount);
-        } else {
-            plugin.getDatabaseManager().addBalance(uuid, amount);
-        }
-    }
-
-    private void removeBalance(String uuid, double amount) {
-        if (plugin.getCacheManager() != null) {
-            plugin.getCacheManager().removeBalance(uuid, amount);
-        } else {
-            plugin.getDatabaseManager().removeBalance(uuid, amount);
-        }
-    }
-
-    private void recordTransactionAsync(String from, String to, double amount) {
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            if (plugin.getCacheManager() != null) {
-                plugin.getCacheManager().createTransaction(from, to, amount);
-            } else {
-                plugin.getDatabaseManager().createTransaction(from, to, amount);
-            }
-        });
     }
 }

@@ -7,6 +7,7 @@ import com.spectrasonic.economySystem.database.DatabaseManager;
 import com.spectrasonic.economySystem.database.LiteSQLManager;
 import com.spectrasonic.economySystem.database.MariaDBManager;
 import com.spectrasonic.economySystem.database.JDBCManager;
+import com.spectrasonic.economySystem.database.TransactionPurger;
 import com.spectrasonic.economySystem.utils.MessageManager;
 import net.milkbowl.vault.permission.Permission;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -23,6 +24,7 @@ public class ConfigManager {
     private CacheManager cacheManager;
     private FlushScheduler flushScheduler;
     private Permission permissions;
+    private TransactionPurger transactionPurger;
 
     public ConfigManager(Main plugin) {
         this.plugin = plugin;
@@ -52,6 +54,10 @@ public class ConfigManager {
         return permissions;
     }
 
+    public TransactionPurger getTransactionPurger() {
+        return transactionPurger;
+    }
+
     public void loadMessages() {
         try {
             File file = new File(plugin.getDataFolder(), "messages.yml");
@@ -77,7 +83,22 @@ public class ConfigManager {
                 return;
             }
         }
+
+        String serverId = plugin.getConfig().getString("database.server-id", "unknown");
+        databaseManager.setServerId(serverId);
+
         databaseManager.connect();
+
+        setupTransactionPurger();
+    }
+
+    private void setupTransactionPurger() {
+        int retentionDays = plugin.getConfig().getInt("database.transaction-retention", 30);
+        if (retentionDays > 0) {
+            transactionPurger = new TransactionPurger(plugin, databaseManager, retentionDays);
+            transactionPurger.start();
+            plugin.getLogger().info("Transaction purger started with " + retentionDays + " days retention.");
+        }
     }
 
     public void setupCache() {
